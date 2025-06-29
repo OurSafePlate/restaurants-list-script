@@ -129,28 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 }
-
-  const capitalizeFirstLetter = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
-
-  // Zoek de doel-container BINNEN het specifieke parentElement (bv. het gekloonde restaurant-item)
-  const targetElement = parentElement.querySelector('#allergy-icon-container');
-  if (!targetElement) return; // Stop als de container niet bestaat in dit item
-
-  // Verwerk de tekst
-  const allergiesArray = (allergyText || "").toLowerCase().split(',').map(s => s.trim()).filter(s => s);
-  
-  targetElement.innerHTML = ""; // Maak de container leeg
-
-  if (allergiesArray.length > 0) {
-    const iconsHTML = allergiesArray.map(key =>
-      allergyIconMap[key]
-        ? `<img src="${allergyIconMap[key]}" alt="${capitalizeFirstLetter(key)}" title="${capitalizeFirstLetter(key)}" class="allergy-icon-class">`
-        : ""
-    ).join('');
-    
-    targetElement.innerHTML = iconsHTML;
-  }
-}
   
   // --- FUNCTIE OM TEKST IN TE KORTEN ---
 		function truncateText(text, maxLength) {
