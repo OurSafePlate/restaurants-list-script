@@ -160,7 +160,9 @@ document.addEventListener('DOMContentLoaded', () => {
  			 return text.substring(0, maxLength) + '...';
 	}
 
- function renderRestaurantItem(restaurantData, isForSlider = false) {
+ // --- VERVANG UW HUIDIGE renderRestaurantItem FUNCTIE VOLLEDIG MET DEZE ---
+
+function renderRestaurantItem(restaurantData, isForSlider = false) {
     const templateSourceNode = isForSlider 
         ? mainSliderTemplateNodeGlobal?.querySelector(sliderItemTemplateSelector) 
         : templateItemEl;
@@ -203,52 +205,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- NU KOMT DE GESCHEIDEN LOGICA ---
 
     if (isForSlider) {
-    // --- LOGICA SPECIFIEK VOOR DE SLIDER ---
+        // --- LOGICA SPECIFIEK VOOR DE SLIDER ---
+        const totalRatingValue = restaurantData.avg_total_rating ?? restaurantData.total_rating;
+        const totalRatingTextEl = newItem.querySelector('.restaurant-total-rating');
+        if (totalRatingTextEl) {
+            totalRatingTextEl.textContent = totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-';
+        }
+        renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.is-quality-rating', totalRatingValue);
 
-    // 1. Kwaliteitsrating (total_rating)
-    const totalRatingValue = restaurantData.avg_total_rating ?? restaurantData.total_rating;
-    const totalRatingTextEl = newItem.querySelector('.restaurant-total-rating');
-    if (totalRatingTextEl) {
-        totalRatingTextEl.textContent = totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-';
-    }
-    renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.is-quality-rating', totalRatingValue);
+        const safeScoreValue = restaurantData.allergy_rating; 
+        const safeScoreTextEl = newItem.querySelector('.restaurants_allergy_rating-overlay.is-slider-overlay .restaurants_allergy_rating-overlay-rating');
+        if (safeScoreTextEl) {
+            safeScoreTextEl.textContent = safeScoreValue ? parseFloat(safeScoreValue).toFixed(1) : '-';
+        }
+        const safeScoreVisualsContainerSelector = '.restaurants_allergy_rating-overlay.is-slider-overlay .restaurants_rating_star-wrap.restaurants_rating_allergy-wrap';
+        renderRatingVisuals(newItem, safeScoreVisualsContainerSelector, safeScoreValue);
 
-    // 2. Our Safe Score (allergy_rating)
-    const safeScoreValue = restaurantData.allergy_rating; 
-    const safeScoreTextEl = newItem.querySelector('.restaurants_allergy_rating-overlay.is-slider-overlay .restaurants_allergy_rating-overlay-rating');
-    if (safeScoreTextEl) {
-        safeScoreTextEl.textContent = safeScoreValue ? parseFloat(safeScoreValue).toFixed(1) : '-';
-    }
-    const safeScoreVisualsContainerSelector = '.restaurants_allergy_rating-overlay.is-slider-overlay .restaurants_rating_star-wrap.restaurants_rating_allergy-wrap';
-    renderRatingVisuals(newItem, safeScoreVisualsContainerSelector, safeScoreValue);
+        const keukenEl = newItem.querySelector('.restaurant_cuisine');
+        if (keukenEl) keukenEl.textContent = restaurantData.restaurant_keuken || '-';
 
-    // --- NIEUW TOEGEVOEGD: Keuken, Prijs en Maaltijdopties ---
-    
-    // Keuken
-    const keukenEl = newItem.querySelector('.restaurant_cuisine');
-    if (keukenEl) keukenEl.textContent = restaurantData.restaurant_keuken || '-';
+        const priceEl = newItem.querySelector('.restaurant_price');
+        if (priceEl) priceEl.textContent = restaurantData.restaurant_price || '-';
 
-    // Prijs
-    const priceEl = newItem.querySelector('.restaurant_price');
-    if (priceEl) priceEl.textContent = restaurantData.restaurant_price || '-';
-
-    // Maaltijdopties
-    const mealOptEl = newItem.querySelector('.meal-options-output'); 
-    if (mealOptEl && restaurantData.restaurant_meal_options && Array.isArray(restaurantData.restaurant_meal_options)) {
-        mealOptEl.innerHTML = '';
-        restaurantData.restaurant_meal_options.forEach(opt => {
-            if(opt){
-                const b = document.createElement('span');
-                b.className = 'meal-option-badge';
-                b.textContent = opt;
-                mealOptEl.appendChild(b);
-            }
-        });
-    } else if (mealOptEl) {
-        mealOptEl.innerHTML = '';
-    }
-    // --- EINDE NIEUWE TOEVOEGING ---
-
+        const mealOptEl = newItem.querySelector('.meal-options-output'); 
+        if (mealOptEl && restaurantData.restaurant_meal_options && Array.isArray(restaurantData.restaurant_meal_options)) {
+            mealOptEl.innerHTML = '';
+            restaurantData.restaurant_meal_options.forEach(opt => {
+                if(opt){
+                    const b = document.createElement('span');
+                    b.className = 'meal-option-badge';
+                    b.textContent = opt;
+                    mealOptEl.appendChild(b);
+                }
+            });
+        } else if (mealOptEl) {
+            mealOptEl.innerHTML = '';
+        }
     } else {
         // --- LOGICA ALLEEN VOOR DE HOOFDLIJST ---
         const keukenEl = newItem.querySelector('.restaurant_cuisine');
