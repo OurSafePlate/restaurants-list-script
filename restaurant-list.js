@@ -307,7 +307,29 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
         }
         renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', allergyRatingValue);
 
-	       // --- START NIEUWE LOGICA: ALLERGIE-ICOONTJES ---
+	// --- START NIEUWE LOGICA: ALLERGIE-TITEL TONEN/VERBERGEN ---
+
+    // 1. Zoek het titel-element BINNEN het huidige restaurant-item.
+    const allergyTitleEl = newItem.querySelector('#allergy-title-icons');
+    
+    // 2. Haal de allergie-tekst op uit de Xano data.
+    const allergyTextFromXano = restaurantData.review_allergies || "";
+
+    // 3. Controleer of de titel-div bestaat en of er daadwerkelijk allergie-tekst is.
+    if (allergyTitleEl) {
+        if (allergyTextFromXano && allergyTextFromXano.trim() !== "") {
+            // Zo ja: maak de titel zichtbaar.
+            // Gebruik 'block', 'flex', of '' afhankelijk van de standaard display-stijl in Webflow.
+            allergyTitleEl.style.display = 'block'; 
+        } else {
+            // Zo nee: verberg de titel.
+            allergyTitleEl.style.display = 'none';
+        }
+    }
+
+    // --- EINDE NIEUWE LOGICA ---
+
+	// --- START NIEUWE LOGICA: ALLERGIE-ICOONTJES ---
     
     // 1. Zoek het 'allergy-source' tekstveld BINNEN dit specifieke item.
     const allergySourceField = newItem.querySelector('#allergy-source');
