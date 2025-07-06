@@ -99,6 +99,80 @@ document.addEventListener('DOMContentLoaded', () => {
       throw error; 
     }
   }
+
+// --- NIEUWE FUNCTIE: FILTERS UIT URL LEZEN EN TOEPASSEN ---
+function applyFiltersFromURL() {
+    log("applyFiltersFromURL: Functie gestart. Controleren op URL-parameters...");
+    const urlParams = new URLSearchParams(window.location.search);
+    let filtersWereApplied = false;
+
+    // Een 'woordenboek' om URL-parameters te koppelen aan uw filter-configuratie
+    const paramConfig = {
+        'keuken': {
+            groupSelector: keukenCheckboxGroupSelector,
+            dataAttribute: 'cuisine', // data-cuisine -> cuisine
+            filterKey: 'filter_keuken'
+        },
+        'meal_options': {
+            groupSelector: mealOptionsCheckboxGroupSelector,
+            dataAttribute: 'mealOptions', // data-meal-options -> mealOptions
+            filterKey: 'filter_meal_options'
+        },
+        'price': {
+            groupSelector: priceCheckboxGroupSelector,
+            dataAttribute: 'price', // data-price -> price
+            filterKey: 'filter_price'
+        }
+    };
+
+    // Loop door elke configuratie
+    for (const paramName in paramConfig) {
+        if (urlParams.has(paramName)) {
+            const config = paramConfig[paramName];
+            // Haal waarden op en split ze op de komma (voor meerdere waarden, bv. ?keuken=Italiaans,Frans)
+            const valuesFromURL = urlParams.get(paramName).split(',').map(v => v.trim()).filter(Boolean);
+
+            if (valuesFromURL.length > 0) {
+                log(`Parameter gevonden: '${paramName}' met waarden:`, valuesFromURL);
+                filtersWereApplied = true;
+
+                const filterGroupEl = document.querySelector(config.groupSelector);
+                if (!filterGroupEl) {
+                    log(`Waarschuwing: Filtergroep '${config.groupSelector}' niet gevonden.`);
+                    continue; // Ga door naar de volgende parameter
+                }
+
+                // Loop door alle checkboxes in de groep
+                filterGroupEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    const checkboxValue = cb.dataset[config.dataAttribute];
+                    if (checkboxValue && valuesFromURL.includes(checkboxValue)) {
+                        log(`Match gevonden! Checkbox met waarde '${checkboxValue}' wordt aangevinkt.`);
+                        // 1. Vink de checkbox daadwerkelijk aan
+                        cb.checked = true;
+
+                        // 2. Update de visuele stijl van Webflow
+                        const visualCheckbox = cb.previousElementSibling;
+                        if (visualCheckbox && visualCheckbox.classList.contains('w-checkbox-input')) {
+                            visualCheckbox.classList.add('w--redirected-checked');
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    // Als er filters zijn toegepast via de URL, roepen we handleFilterChange aan.
+    // Dit zorgt ervoor dat de 'currentFilters' state wordt bijgewerkt en de eerste fetch correct wordt uitgevoerd.
+    if (filtersWereApplied) {
+        log("Filters uit URL zijn toegepast. handleFilterChange() wordt aangeroepen om de state en lijst te updaten.");
+        // We roepen de bestaande functie aan die de state bijwerkt op basis van de (nu aangevinkte) checkboxes.
+        handleFilterChange();
+        return true; // Geef aan dat de fetch al is gestart
+    }
+    
+    log("Geen geldige filter-parameters in URL gevonden.");
+    return false; // Geef aan dat een normale fetch moet plaatsvinden
+}
   
   // -- FUNCTIE VOOR RATING BOLLETJES -- 
   
@@ -906,8 +980,6 @@ async function initializeSite() {
     return; // Stop de hele functie hier
   }
 
-  // Als we hier komen, weten we 100% zeker dat we een token hebben.
-
   // Koppel nu pas de DOM elementen, voor het geval we eerder moesten stoppen.
   restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
   templateItemEl = document.querySelector(templateItemSelector);
@@ -938,137 +1010,82 @@ async function initializeSite() {
   // STAP 2: Haal de slider data op en WACHT.
   await fetchAllSliderDataOnce();
 
-  // STAP 3: Haal de restaurant data op.
-  await fetchAndDisplayRestaurants();
-
-  // STAP 4: Voeg nu pas de event listeners toe.
-
-// Hulpfunctie om het paneel te sluiten
-function closeFiltersPanel() {
-  if (filtersPanelEl) {
-    log("Filter paneel sluiten.");
-    filtersPanelEl.classList.remove('is-open');
-  }
-}
-
-// Listener voor de zoekbalk (Desktop-only)
-if (searchInputEl) {
-  searchInputEl.addEventListener('input', () => {
-    if (window.innerWidth >= 992) { // Gebruik 992px als standaard tablet breakpoint
-      log("Desktop: Zoek-input gewijzigd, direct filteren.");
-      onSearchInput();
-    }
-  });
-}
-
-// Listener voor de checkboxes (Desktop-only)
-const filterElementsForChange = filterFormEl || document.body;
-filterElementsForChange.addEventListener('change', (e) => {
-  if (e.target.type === 'checkbox' && (e.target.closest(keukenCheckboxGroupSelector) || e.target.closest(mealOptionsCheckboxGroupSelector) || e.target.closest(priceCheckboxGroupSelector))) {
-    if (window.innerWidth >= 992) {
-      log("Desktop: Checkbox gewijzigd, direct filteren.");
-      handleFilterChange();
-    }
-  }
-});
-
-// Listener voor de 'Open Filters' knop (Mobiel)
-if (openFiltersButtonEl && filtersPanelEl) {
-  openFiltersButtonEl.addEventListener('click', () => {
-    log("Open filters knop geklikt.");
-    filtersPanelEl.classList.add('is-open');
-  });
-}
-
-// Listener voor de 'Close Filters' knop (Mobiel)
-if (closeFiltersButtonEl) {
-  closeFiltersButtonEl.addEventListener('click', closeFiltersPanel);
-}
-
-// ÉÉN GECOMBINEERDE Listener voor de 'Apply Filters' knop
-if (applyFiltersButtonEl) {
-  applyFiltersButtonEl.addEventListener('click', (e) => {
-    e.preventDefault();
-    log("Apply filters knop geklikt.");
-    handleFilterChange(); // Pas altijd de filters toe
-    if (window.innerWidth < 992) {
-      closeFiltersPanel(); // Sluit het paneel alleen op mobiel
-    }
-  });
-}
-
-  if (paginationPrevEl) paginationPrevEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage > 1 && !isLoading) { currentPage--; fetchAndDisplayRestaurants(); } });
-  if (paginationNextEl) paginationNextEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage < totalPages && !isLoading && totalPages > 0) { currentPage++; fetchAndDisplayRestaurants(); } });
+  // STAP 3: Event Listeners toevoegen (kan nu al, omdat ze pas actief worden na interactie)
+	// (Hier staan al je event listeners, die blijven ongewijzigd)
+	// Hulpfunctie om het paneel te sluiten
+	function closeFiltersPanel() {
+	  if (filtersPanelEl) {
+	    log("Filter paneel sluiten.");
+	    filtersPanelEl.classList.remove('is-open');
+	  }
+	}
+	// Listener voor de zoekbalk (Desktop-only)
+	if (searchInputEl) {
+	  searchInputEl.addEventListener('input', () => {
+	    if (window.innerWidth >= 992) {
+	      log("Desktop: Zoek-input gewijzigd, direct filteren.");
+	      onSearchInput();
+	    }
+	  });
+	}
+	// Listener voor de checkboxes (Desktop-only)
+	const filterElementsForChange = filterFormEl || document.body;
+	filterElementsForChange.addEventListener('change', (e) => {
+	  if (e.target.type === 'checkbox' && (e.target.closest(keukenCheckboxGroupSelector) || e.target.closest(mealOptionsCheckboxGroupSelector) || e.target.closest(priceCheckboxGroupSelector))) {
+	    if (window.innerWidth >= 992) {
+	      log("Desktop: Checkbox gewijzigd, direct filteren.");
+	      handleFilterChange();
+	    }
+	  }
+	});
+	// Listener voor de 'Open Filters' knop (Mobiel)
+	if (openFiltersButtonEl && filtersPanelEl) {
+	  openFiltersButtonEl.addEventListener('click', () => {
+	    log("Open filters knop geklikt.");
+	    filtersPanelEl.classList.add('is-open');
+	  });
+	}
+	// Listener voor de 'Close Filters' knop (Mobiel)
+	if (closeFiltersButtonEl) {
+	  closeFiltersButtonEl.addEventListener('click', closeFiltersPanel);
+	}
+	// ÉÉN GECOMBINEERDE Listener voor de 'Apply Filters' knop
+	if (applyFiltersButtonEl) {
+	  applyFiltersButtonEl.addEventListener('click', (e) => {
+	    e.preventDefault();
+	    log("Apply filters knop geklikt.");
+	    handleFilterChange(); // Pas altijd de filters toe
+	    if (window.innerWidth < 992) {
+	      closeFiltersPanel(); // Sluit het paneel alleen op mobiel
+	    }
+	  });
+	}
+	if (paginationPrevEl) paginationPrevEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage > 1 && !isLoading) { currentPage--; fetchAndDisplayRestaurants(); } });
+	if (paginationNextEl) paginationNextEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage < totalPages && !isLoading && totalPages > 0) { currentPage++; fetchAndDisplayRestaurants(); } });
     if (paginationNumbersContainerEl) {
         paginationNumbersContainerEl.addEventListener('click', (e) => {
             e.preventDefault(); 
-            const clickedElement = e.target; // Het daadwerkelijk geklikte element
-            log("Paginanummer-container klik. Geklikt op:", clickedElement);
-
-            // Ga alleen verder als het geklikte element (of zijn ouder met .pagination-number) een data-page heeft
+            const clickedElement = e.target;
             const pageButton = clickedElement.closest('.pagination-number');
-            if (!pageButton || !pageButton.dataset.page) {
-                log("Klik was niet op een geldige paginaknop met data-page.");
-                return; 
-            }
-
-            const pageNumStr = pageButton.dataset.page;
-            const pageClicked = parseInt(pageNumStr, 10);
-            log(`Paginaknop data-page: "${pageNumStr}", Geparst als: ${pageClicked}`);
-
-            // Check 1: Is het een geldig paginanummer (niet 0 voor dots, en niet NaN)?
-            if (!pageClicked || isNaN(pageClicked)) {
-                log("Ongeldig paginanummer (0 of NaN) geklikt. Actie genegeerd.");
-                return;
-            }
-
-            // Check 2: Is de pagina al aan het laden?
-            if (isLoading) {
-                log("Al aan het laden, paginaklik genegeerd.");
-                return;
-            }
-
-            // Check 3: Is het de huidige pagina?
-            if (pageClicked === currentPage) {
-                log("Geklikt op de huidige actieve pagina. Actie genegeerd.");
-                return;
-            }
-
-            // Als alle checks OK zijn:
+            if (!pageButton || !pageButton.dataset.page) { return; }
+            const pageClicked = parseInt(pageButton.dataset.page, 10);
+            if (!pageClicked || isNaN(pageClicked) || isLoading || pageClicked === currentPage) { return; }
             currentPage = pageClicked;
-            log(`SUCCESS: Nieuwe pagina is ${currentPage}. fetchAndDisplayRestaurants() wordt aangeroepen.`);
             fetchAndDisplayRestaurants();
         });
-    } else {
-        log("Paginanummers container (paginationNumbersContainerEl) niet gevonden voor click listener setup.");
     }
-    // --- VERVANG UW HELE clearAllButtonEl BLOK MET DIT ---
-
-		if (clearAllButtonEl) {
+	if (clearAllButtonEl) {
     clearAllButtonEl.addEventListener('click', (e) => {
         e.preventDefault(); 
         log("Clear all filters geklikt.");
-
-        // 1. Reset het zoekveld (dit deed u al)
-        if (searchInputEl) {
-            searchInputEl.value = '';
-        }
-
-        // 2. Loop door alle filtergroepen om de checkboxes te resetten
+        if (searchInputEl) { searchInputEl.value = ''; }
         const allFilterGroupSelectors = [keukenCheckboxGroupSelector, mealOptionsCheckboxGroupSelector, priceCheckboxGroupSelector];
-        
         allFilterGroupSelectors.forEach(groupSelector => {
             const groupEl = document.querySelector(groupSelector);
             if (groupEl) {
-                // Vind alle checkboxes binnen deze groep
                 const checkboxes = groupEl.querySelectorAll('input[type="checkbox"]');
-                
                 checkboxes.forEach(cb => {
-                    // Reset de daadwerkelijke 'checked' staat
                     cb.checked = false;
-
-                    // Reset de visuele weergave van Webflow
-                    // Webflow voegt 'w--redirected-checked' toe voor de visuele stijl.
                     const visualCheckbox = cb.previousElementSibling;
                     if (visualCheckbox && visualCheckbox.classList.contains('w-checkbox-input')) {
                         visualCheckbox.classList.remove('w--redirected-checked');
@@ -1076,18 +1093,19 @@ if (applyFiltersButtonEl) {
                 });
             }
         });
-
-        // 3. Roep de filterfunctie aan om de resultaten te vernieuwen (dit deed u al)
         handleFilterChange(true);
     });
 }
-    
-    if (window.fsAttributes) { /* ... Wacht op Finsweet ... */ } 
-    
-    await fetchAllSliderDataOnce(); 
-    await fetchAndDisplayRestaurants(); // Wacht op de eerste load
-    // safeCallCMSFilter('init') is nu verplaatst naar einde van fetchAndDisplayRestaurants (als 'refresh')
+  
+  // STAP 4: VOER DE EERSTE FETCH UIT, REKENING HOUDEND MET URL-PARAMETERS
+  const fetchWasTriggeredByUrl = applyFiltersFromURL();
+  
+  // Als de URL geen filters bevatte, starten we de normale, ongefilterde lijst.
+  if (!fetchWasTriggeredByUrl) {
+    log("Initialisatie: Geen URL-filters, start de standaard fetch.");
+    await fetchAndDisplayRestaurants();
   }
+}
 
   setTimeout(initializeSite, 700); 
 });
