@@ -1040,7 +1040,8 @@ async function initializeSite() {
 	// Listener voor de checkboxes (Desktop-only)
 	const filterElementsForChange = filterFormEl || document.body;
 	filterElementsForChange.addEventListener('change', (e) => {
-	  if (e.target.type === 'checkbox' && (e.target.closest(keukenCheckboxGroupSelector) || e.target.closest(mealOptionsCheckboxGroupSelector) || e.target.closest(priceCheckboxGroupSelector))) {
+	  if (e.target.type === 'checkbox' && (e.target.closest(keukenCheckboxGroupSelector) || e.target.closest(mealOptionsCheckboxGroupSelector) || e.target.closest(priceCheckboxGroupSelector) ||
+      e.target.closest(allergieCheckboxGroupSelector))) {
 	    if (window.innerWidth >= 992) {
 	      log("Desktop: Checkbox gewijzigd, direct filteren.");
 	      handleFilterChange();
