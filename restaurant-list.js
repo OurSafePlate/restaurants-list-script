@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInputSelector = '#filter-search-input'; 
   const keukenCheckboxGroupSelector = '.filter-group-keuken'; 
   const mealOptionsCheckboxGroupSelector = '.filter-group-meal-options'; 
-  const priceCheckboxGroupSelector = '.filter-group-price'; 
+  const priceCheckboxGroupSelector = '.filter-group-price';
+  const allergieCheckboxGroupSelector = '.filter-group-allergie';
   const clearAllButtonSelector = '#clear-all-filters-button';
   const applyFiltersButtonSelector = '#apply-filters-button';
   const openFiltersButtonSelector = '#open-filters-button';
@@ -42,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- GLOBALE STATE ---
   let currentPage = 1;
   let currentSearchTerm = '';
-  let currentFilters = { filter_keuken: [], filter_meal_options: [], filter_price: [] };
+  let currentFilters = { filter_keuken: [], filter_meal_options: [], filter_price: [], filter_allergie: [] };
   let currentSortBy = 'name_asc'; 
   let totalPages = 0; // Start met 0
   let isLoading = false;
@@ -625,13 +626,15 @@ function renderPageNumbers() {
         // Zorg ervoor dat we altijd een array toewijzen, zelfs als getSelected... undefined zou geven
         currentFilters.filter_keuken = getSelectedCheckboxDataValues(keukenCheckboxGroupSelector, 'cuisine') || []; 
         currentFilters.filter_meal_options = getSelectedCheckboxDataValues(mealOptionsCheckboxGroupSelector, 'meal-options') || []; 
-        currentFilters.filter_price = getSelectedCheckboxDataValues(priceCheckboxGroupSelector, 'price') || []; 
+        currentFilters.filter_price = getSelectedCheckboxDataValues(priceCheckboxGroupSelector, 'price') || [];
+	currentFilters.filter_allergie = getSelectedCheckboxDataValues(allergieCheckboxGroupSelector, 'allergy') || [];
     } else {
         // Als het een clear all is, resetten we de filters hier expliciet naar lege arrays
         currentSearchTerm = '';
         currentFilters.filter_keuken = [];
         currentFilters.filter_meal_options = [];
         currentFilters.filter_price = [];
+	currentFilters.filter_allergie = [];
         // De UI (checkboxes, input veld) wordt al gereset in de clearAllButton click handler
     }
     
@@ -890,6 +893,7 @@ function injectAndRenderSlider(targetPlaceholderDiv, sliderKeyFromApi, sliderDis
     if (currentFilters.filter_keuken.length > 0) params.append('filter_keuken', currentFilters.filter_keuken.join(','));
     if (currentFilters.filter_meal_options.length > 0) params.append('filter_meal_options', currentFilters.filter_meal_options.join(','));
     if (currentFilters.filter_price.length > 0) params.append('filter_price', currentFilters.filter_price.join(','));
+    if (currentFilters.filter_allergie.length > 0) params.append('filter_allergie', currentFilters.filter_allergie.join(','));
     const requestUrl = `${API_RESTAURANTS_LIST}?${params.toString()}`;
     log("API call hoofdlijst:", requestUrl);
 
@@ -1079,7 +1083,7 @@ async function initializeSite() {
         e.preventDefault(); 
         log("Clear all filters geklikt.");
         if (searchInputEl) { searchInputEl.value = ''; }
-        const allFilterGroupSelectors = [keukenCheckboxGroupSelector, mealOptionsCheckboxGroupSelector, priceCheckboxGroupSelector];
+        const allFilterGroupSelectors = [keukenCheckboxGroupSelector, mealOptionsCheckboxGroupSelector, priceCheckboxGroupSelector, allergieCheckboxGroupSelector];
         allFilterGroupSelectors.forEach(groupSelector => {
             const groupEl = document.querySelector(groupSelector);
             if (groupEl) {
