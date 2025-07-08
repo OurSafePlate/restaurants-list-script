@@ -123,7 +123,12 @@ function applyFiltersFromURL() {
             groupSelector: priceCheckboxGroupSelector,
             dataAttribute: 'price', // data-price -> price
             filterKey: 'filter_price'
-        }
+        },
+	'allergie': { // <-- NIEUWE SECTIE
+           groupSelector: allergieCheckboxGroupSelector, 
+           dataAttribute: 'allergy',                    
+           filterKey: 'filter_allergie'           
+	}
     };
 
     // Loop door elke configuratie
