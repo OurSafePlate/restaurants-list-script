@@ -13,6 +13,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_CALL_RETRY_DELAY = 2000;
   const SEARCH_DEBOUNCE_DELAY = 500; 
 
+  // --- KAART CONFIGURATIE ---
+  const NOMINATIM_GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search?format=json&q=';
+  const INITIAL_COORDS = [52.3676, 4.9041]; // Amsterdam
+  const INITIAL_ZOOM = 12;
+
+  const parentComponentSelector = '.layout192_component';
+  const showMapButtonSelector = '#show-map-button';
+  const showListButtonSelector = '#show-list-button';
+  const mapElementSelector = '#map';
+  const locateMeButtonSelector = '#locate-me-button';
+  const searchAreaButtonSelector = '#search-area-button';	
+
   // --- SELECTOREN ---
   const restaurantListWrapperSelector = '#restaurant-list-wrapper'; 
   const templateItemSelector = '.is-template-item'; 
@@ -50,13 +62,21 @@ document.addEventListener('DOMContentLoaded', () => {
   let allSliderData = null;
   let xanoAuthToken = null;
   let sliderInjectionCounter = 0;
-  let initialLoadComplete = false; // Vlag voor eerste succesvolle load
+  let initialLoadComplete = false; 
+
+  // --- KAART STATE ---
+  let map;
+  let markers = {}; // { restaurantId: markerObject }
+  let isMapInitialized = false; // Vlag om te zien of de kaart al geladen is
+  let allRestaurantsWithCoords = []; // Cache voor de data van de huidige pagina
+  let userLocationMarker;
 
   // --- DOM ELEMENTEN ---
   let restaurantListWrapperEl, templateItemEl, mainSliderTemplateNodeGlobal, filterFormEl, searchInputEl,
     resultsCountTextEl, paginationPrevEl, paginationNextEl, paginationInfoEl, paginationNumbersContainerEl,
     finsweetEmptyStateEl, finsweetLoaderEl, clearAllButtonEl, applyFiltersButtonEl, openFiltersButtonEl,
-    closeFiltersButtonEl, filtersPanelEl;
+    closeFiltersButtonEl, filtersPanelEl, parentComponentEl, showMapButtonEl, showListButtonEl, mapElement, 
+    locateMeButton, searchAreaButton;
 
   // --- LOG FUNCTIE ---
   function log(...args) {
@@ -477,6 +497,147 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
     return newItem;
 }
 
+function initMap() {
+    log("initMap: Kaart wordt voor de eerste keer geïnitialiseerd.");
+    if (!mapElement) {
+        log("Kan kaart niet initialiseren: mapElement niet gevonden.");
+        return;
+    }
+    map = L.map(mapElement).setView(INITIAL_COORDS, INITIAL_ZOOM);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CARTO',
+        maxZoom: 20
+    }).addTo(map);
+
+    isMapInitialized = true;
+    setTimeout(() => map.invalidateSize(), 200); // Essentieel na tonen!
+}
+
+function createMarker(restaurant) {
+    if (!restaurant.coords || !map) return;
+    const marker = L.circleMarker(restaurant.coords, {
+        renderer: L.svg(), radius: 8, fillColor: '#28a745',
+        color: '#ffffff', weight: 2, fillOpacity: 0.9
+    }).addTo(map).bindTooltip(restaurant.Name);
+
+    marker.on('click', () => handleMarkerClick(restaurant.id));
+    markers[restaurant.id] = marker;
+}
+
+function displayMarkersForCurrentList() {
+    if (!map || !isMapInitialized) return;
+    Object.values(markers).forEach(marker => map.removeLayer(marker));
+    markers = {};
+    allRestaurantsWithCoords.forEach(restaurant => createMarker(restaurant));
+}
+
+function handleLocateMe() {
+    if (!map) return;
+    map.locate({ setView: true, maxZoom: 16 });
+
+    map.on('locationfound', e => {
+        if (userLocationMarker) {
+            map.removeLayer(userLocationMarker);
+        }
+        userLocationMarker = L.circleMarker(e.latlng, {
+            radius: 8, fillColor: '#007bff', color: '#ffffff',
+            weight: 2, fillOpacity: 0.9
+        }).addTo(map);
+        userLocationMarker.bindPopup('Jouw locatie').openPopup();
+    });
+
+    map.on('locationerror', () => {
+        alert('Kon uw locatie niet vinden. Zorg ervoor dat u toestemming hebt gegeven.');
+    });
+}
+
+function handleSearchArea() {
+    if (!map) return;
+    const bounds = map.getBounds();
+    // Deze functie is complexer met een API. Voor nu filteren we de client-side data.
+    // Voor een echte "zoek dit gebied" zou je de 'bounds' naar je Xano API moeten sturen.
+    const visibleRestaurants = allRestaurantsWithCoords.filter(r => r.coords && bounds.contains(r.coords));
+    
+    // Simpele feedback voor de gebruiker
+    alert(`Er zijn ${visibleRestaurants.length} van de geladen restaurants zichtbaar in dit gebied.`);
+    log("Zichtbare restaurants:", visibleRestaurants);
+}
+
+function showMapView() {
+    if (!parentComponentEl) return;
+    log("showMapView: Overschakelen naar kaartweergave.");
+    if (showMapButtonEl) showMapButtonEl.style.display = 'none';
+    if (showListButtonEl) showListButtonEl.style.display = 'flex'; // of block
+    parentComponentEl.classList.add('map-view-active');
+
+    if (!isMapInitialized) {
+        initMap();
+        displayMarkersForCurrentList();
+    } else {
+        setTimeout(() => map.invalidateSize(), 50);
+    }
+}
+
+function showListView() {
+    if (!parentComponentEl) return;
+    log("showListView: Overschakelen naar lijstweergave.");
+    if (showMapButtonEl) showMapButtonEl.style.display = 'flex'; // of block
+    if (showListButtonEl) showListButtonEl.style.display = 'none';
+    parentComponentEl.classList.remove('map-view-active');
+}
+
+function handleListItemClick(id) {
+    if (!map || !isMapInitialized) return;
+    const restaurant = allRestaurantsWithCoords.find(r => r.id === id);
+    const marker = markers[id];
+    if (restaurant && restaurant.coords && marker) {
+        map.flyTo(restaurant.coords, 16);
+        marker.openTooltip();
+        highlightSelection(id);
+    }
+}
+
+function handleMarkerClick(id) {
+    const listItem = restaurantListWrapperEl.querySelector(`[data-restaurant-id='${id}']`);
+    if (listItem) {
+        listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        highlightSelection(id);
+    }
+}
+
+function highlightSelection(id) {
+    document.querySelectorAll('.restaurants_item-component').forEach(card => card.classList.remove('is-highlighted'));
+    Object.values(markers).forEach(m => m.setStyle({ radius: 8, fillColor: '#28a745' }));
+
+    const listItem = restaurantListWrapperEl.querySelector(`[data-restaurant-id='${id}']`);
+    if (listItem) listItem.classList.add('is-highlighted');
+    
+    const marker = markers[id];
+    if (marker) {
+        marker.setStyle({ radius: 12, fillColor: '#1e7e34' });
+        marker.bringToFront();
+    }
+}
+
+async function geocodeRestaurantList(restaurants) {
+    if (!Array.isArray(restaurants)) return [];
+    const geocodedRestaurants = [];
+    for (const restaurant of restaurants) {
+        const addressString = `${restaurant.restaurant_address}, ${restaurant.restaurant_postal_code} ${restaurant.restaurant_city}`;
+        try {
+            await new Promise(resolve => setTimeout(resolve, 1100)); // API limiet
+            const response = await fetch(`${NOMINATIM_GEOCODE_ENDPOINT}${encodeURIComponent(addressString)}`);
+            const data = await response.json();
+            if (data && data.length > 0) {
+                restaurant.coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+            }
+        } catch (error) { console.error(`Geocoding Fout:`, error); }
+        geocodedRestaurants.push(restaurant);
+    }
+    return geocodedRestaurants;
+}
+	
+	
 // --- FUNCTIE OM PAGINANUMMERS TE RENDEREN ---
 function renderPageNumbers() {
     if (!paginationNumbersContainerEl) { 
@@ -882,18 +1043,15 @@ function injectAndRenderSlider(targetPlaceholderDiv, sliderKeyFromApi, sliderDis
   async function fetchAndDisplayRestaurants() {
     if (isLoading) { log("Al aan het laden..."); return; }
     isLoading = true;
-    sliderInjectionCounter = 0; 
-    const currentMainListSlugs = []; 
+    sliderInjectionCounter = 0;
     if (finsweetLoaderEl) finsweetLoaderEl.style.display = 'block';
-    if (restaurantListWrapperEl) restaurantListWrapperEl.style.opacity = '0.5'; // Waas aan
+    if (restaurantListWrapperEl) restaurantListWrapperEl.style.opacity = '0.5';
 
-    // Zorg dat slider data beschikbaar is (wordt nu in initializeSite al gedaan)
-    if (allSliderData === null) { 
-        log("fetchAndDisplayRestaurants: allSliderData is nog null, wacht kort...");
-        await new Promise(resolve => setTimeout(resolve, 300)); // Kleine wacht als het nog niet klaar zou zijn
+    if (allSliderData === null) {
+        await new Promise(resolve => setTimeout(resolve, 300));
     }
-    
-    const params = new URLSearchParams({page: currentPage, per_page: ITEMS_PER_PAGE, sort_by: currentSortBy});
+
+    const params = new URLSearchParams({ page: currentPage, per_page: ITEMS_PER_PAGE, sort_by: currentSortBy });
     if (currentSearchTerm) params.append('search_term', currentSearchTerm);
     if (currentFilters.filter_keuken.length > 0) params.append('filter_keuken', currentFilters.filter_keuken.join(','));
     if (currentFilters.filter_meal_options.length > 0) params.append('filter_meal_options', currentFilters.filter_meal_options.join(','));
@@ -903,71 +1061,79 @@ function injectAndRenderSlider(targetPlaceholderDiv, sliderKeyFromApi, sliderDis
     log("API call hoofdlijst:", requestUrl);
 
     try {
-      const data = await fetchDataWithRetry(requestUrl, {});
-      log("Hoofdlijst data ontvangen:", data ? JSON.parse(JSON.stringify(data)) : "Geen data object"); 
+        const data = await fetchDataWithRetry(requestUrl, {});
+        log("Hoofdlijst data ontvangen:", data ? JSON.parse(JSON.stringify(data)) : "Geen data object");
 
-      if (!data) { throw new Error("Geen data object teruggekomen van fetchDataWithRetry voor hoofdlijst."); }
-      
-      if (restaurantListWrapperEl) restaurantListWrapperEl.innerHTML = ''; 
+        if (!data || !data.items) { throw new Error("API data is ongeldig of bevat geen 'items' array."); }
 
-      if (data?.items?.length > 0) {
-        data.items.forEach((restaurant, index) => {
-          const itemEl = renderRestaurantItem(restaurant, false); 
-          if (itemEl) { 
-            restaurantListWrapperEl.appendChild(itemEl);
-            if (restaurant.slug) currentMainListSlugs.push(restaurant.slug);
-          }
+        // --- HIER IS DE CORRECTE VOLGORDE ---
+        // 1. EERST geocoden
+        const geocodedItems = await geocodeRestaurantList(data.items);
+        allRestaurantsWithCoords = geocodedItems; // Update de cache
 
-          if ((index + 1) % SLIDER_INJECT_AFTER_N_ITEMS === 0 && (index + 1) < data.items.length) {
-            const sliderDataKeys = allSliderData ? Object.keys(allSliderData) : []; 
-            if (sliderDataKeys.length > 0 && allSliderData[sliderDataKeys[0]] !== undefined ) {
-                const sliderKeyToInject = sliderDataKeys[sliderInjectionCounter % sliderDataKeys.length];
-                if (allSliderData[sliderKeyToInject] && allSliderData[sliderKeyToInject].length > 0) {
-                    let sliderTitle = "Aanbevolen"; 
-                    if (sliderKeyToInject === 'result_random') sliderTitle = 'Willekeurig Uitgelicht';
-                    else if (sliderKeyToInject === 'result_newest') sliderTitle = 'Nieuwkomers';
-                    else if (sliderKeyToInject === 'result_allergy_rating') sliderTitle = 'Top voor Allergieën';
-                    else if (sliderKeyToInject === 'result_email') sliderTitle = 'Onze Selectie'; 
+        // 2. DAN de lijst leegmaken
+        if (restaurantListWrapperEl) restaurantListWrapperEl.innerHTML = '';
 
-                    const placeholderDiv = document.createElement('div');
-                    placeholderDiv.className = 'slider-injection-placeholder'; 
-                    restaurantListWrapperEl.appendChild(placeholderDiv);
-                    
-                    log(`Injecteer slider: ${sliderTitle} (key: ${sliderKeyToInject}) na item ${index + 1}`);
-                    injectAndRenderSlider(placeholderDiv, sliderKeyToInject, sliderTitle);
-                    sliderInjectionCounter++;
-                } else { log(`Slider injectie overgeslagen: Geen items voor key ${sliderKeyToInject}`); }
-            } else { log(`Slider injectie overgeslagen: allSliderData is leeg, null of heeft geen keys.`); }
-          }
-        });
-        if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'none';
-      } else { 
-        if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'block';
-        log("Geen items in hoofdlijst.");
-      }
-      
-      let newTotalPages = data?.pageTotal ?? data?.total_page_count ?? 0; 
-      let newTotalItems = data?.itemsTotal ?? data?.total_items_count ?? 0;
-      totalPages = newTotalPages; // Update globale totalPages
-      if (resultsCountTextEl) resultsCountTextEl.textContent = newTotalItems.toString();
-      updatePaginationUI();
+        // 3. DAN de lijst opbouwen met de gegeocodeerde data
+        if (geocodedItems.length > 0) {
+            geocodedItems.forEach((restaurant, index) => {
+                const itemEl = renderRestaurantItem(restaurant, false);
+                if (itemEl) {
+                    itemEl.dataset.restaurantId = restaurant.id;
+                    itemEl.addEventListener('click', () => handleListItemClick(restaurant.id));
+                    restaurantListWrapperEl.appendChild(itemEl);
+                }
 
-      await safeCallCMSFilter('refresh'); // Doe refresh na renderen
-      initialLoadComplete = true; // Zet vlag na eerste succesvolle load
+                if ((index + 1) % SLIDER_INJECT_AFTER_N_ITEMS === 0 && (index + 1) < geocodedItems.length) {
+                    // Je slider injectie logica is correct en kan hier blijven
+                    const sliderDataKeys = allSliderData ? Object.keys(allSliderData) : []; 
+                    if (sliderDataKeys.length > 0) {
+                       const sliderKeyToInject = sliderDataKeys[sliderInjectionCounter % sliderDataKeys.length];
+                       if(allSliderData[sliderKeyToInject] && allSliderData[sliderKeyToInject].length > 0){
+                           let sliderTitle = "Aanbevolen";
+                           if (sliderKeyToInject === 'result_random') sliderTitle = 'Willekeurig Uitgelicht';
+                           else if (sliderKeyToInject === 'result_newest') sliderTitle = 'Nieuwkomers';
+                           else if (sliderKeyToInject === 'result_allergy_rating') sliderTitle = 'Top voor Allergieën';
+                           else if (sliderKeyToInject === 'result_email') sliderTitle = 'Onze Selectie';
+                           const placeholderDiv = document.createElement('div');
+                           restaurantListWrapperEl.appendChild(placeholderDiv);
+                           injectAndRenderSlider(placeholderDiv, sliderKeyToInject, sliderTitle);
+                           sliderInjectionCounter++;
+                       }
+                    }
+                }
+            });
+            if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'none';
+        } else {
+            if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'block';
+            log("Geen items in hoofdlijst.");
+        }
 
-    } catch (error) { 
+        // 4. Update de markers op de kaart (als die al is geïnitialiseerd)
+        if (isMapInitialized) {
+            displayMarkersForCurrentList();
+        }
+        
+        let newTotalPages = data?.pageTotal ?? 0;
+        let newTotalItems = data?.itemsTotal ?? 0;
+        totalPages = newTotalPages;
+        if (resultsCountTextEl) resultsCountTextEl.textContent = newTotalItems.toString();
+        updatePaginationUI();
+        await safeCallCMSFilter('refresh');
+        initialLoadComplete = true;
+
+    } catch (error) {
         console.error("Fout in fetchAndDisplayRestaurants:", error);
         totalPages = 0;
-        if (resultsCountTextEl) resultsCountTextEl.textContent = '0'; // Zet count op 0 bij error
+        if (resultsCountTextEl) resultsCountTextEl.textContent = '0';
         if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'block';
         updatePaginationUI();
-    } 
-    finally { 
+    } finally {
         isLoading = false;
         if (finsweetLoaderEl) finsweetLoaderEl.style.display = 'none';
-        if (restaurantListWrapperEl) restaurantListWrapperEl.style.opacity = '1'; // Waas weg
+        if (restaurantListWrapperEl) restaurantListWrapperEl.style.opacity = '1';
     }
-  }
+}
 
   // --- INITIALISATIE ---
 async function initializeSite() {
@@ -1005,8 +1171,14 @@ async function initializeSite() {
   clearAllButtonEl = document.querySelector(clearAllButtonSelector);
   applyFiltersButtonEl = document.querySelector(applyFiltersButtonSelector);
   openFiltersButtonEl = document.querySelector(openFiltersButtonSelector);
-	closeFiltersButtonEl = document.querySelector(closeFiltersButtonSelector);
-	filtersPanelEl = document.querySelector(filtersPanelSelector);
+  closeFiltersButtonEl = document.querySelector(closeFiltersButtonSelector);
+  filtersPanelEl = document.querySelector(filtersPanelSelector);
+  parentComponentEl = document.querySelector(parentComponentSelector);
+  showMapButtonEl = document.querySelector(showMapButtonSelector);
+  showListButtonEl = document.querySelector(showListButtonSelector);
+  mapElement = document.querySelector(mapElementSelector);
+  locateMeButton = document.querySelector(locateMeButtonSelector);
+  searchAreaButton = document.querySelector(searchAreaButtonSelector);
   
   if (!restaurantListWrapperEl || !templateItemEl) { 
       console.error("Kritische elementen niet gevonden! Stoppen."); 
@@ -1018,6 +1190,23 @@ async function initializeSite() {
 
   // STAP 2: Haal de slider data op en WACHT.
   await fetchAllSliderDataOnce();
+
+  if (showMapButtonEl) {
+        showMapButtonEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            showMapView();
+        });
+    }
+    if (showListButtonEl) {
+        showListButtonEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            showListView();
+        });
+        showListButtonEl.style.display = 'none'; // Standaard verbergen
+    }
+    if (locateMeButton) locateMeButton.addEventListener('click', handleLocateMe);
+    if (searchAreaButton) searchAreaButton.addEventListener('click', handleSearchArea);
+    // --- EINDE AANPASSING 7 ---
 
   // STAP 3: Event Listeners toevoegen (kan nu al, omdat ze pas actief worden na interactie)
 	// (Hier staan al je event listeners, die blijven ongewijzigd)
