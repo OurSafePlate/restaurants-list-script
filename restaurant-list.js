@@ -1067,14 +1067,15 @@ function injectAndRenderSlider(targetPlaceholderDiv, sliderKeyFromApi, sliderDis
         log("Kan slider niet injecteren, targetPlaceholderDiv (meer) niet in DOM. Dit is onverwacht.");
     }
 }
-  async function fetchAndDisplayRestaurants() {
+  
+async function fetchAndDisplayRestaurants() {
     if (isLoading) { log("Al aan het laden..."); return; }
     isLoading = true;
     sliderInjectionCounter = 0;
     if (finsweetLoaderEl) finsweetLoaderEl.style.display = 'block';
     if (restaurantListWrapperEl) restaurantListWrapperEl.style.opacity = '0.5';
 
-    // Bestaande code voor het bouwen van de request URL
+    // Bestaande code voor het bouwen van de request URL - DIT IS CORRECT
     const params = new URLSearchParams({ page: currentPage, per_page: ITEMS_PER_PAGE, sort_by: currentSortBy });
     if (currentSearchTerm) params.append('search_term', currentSearchTerm);
     if (currentFilters.filter_keuken.length > 0) params.append('filter_keuken', currentFilters.filter_keuken.join(','));
@@ -1082,18 +1083,15 @@ function injectAndRenderSlider(targetPlaceholderDiv, sliderKeyFromApi, sliderDis
     if (currentFilters.filter_price.length > 0) params.append('filter_price', currentFilters.filter_price.join(','));
     if (currentFilters.filter_allergie.length > 0) params.append('filter_allergie', currentFilters.filter_allergie.join(','));
     const requestUrl = `${API_RESTAURANTS_LIST}?${params.toString()}`;
-    log("API call hoofdlijst:", requestUrl);
 
     try {
         const data = await fetchDataWithRetry(requestUrl, {});
-        log("Hoofdlijst data ontvangen:", data);
-
         if (!data || !data.items) { throw new Error("API data is ongeldig."); }
 
-        // BELANGRIJK: Sla de ongegeocodeerde data direct op
+        // Sla de data direct op in de state. De 'coords' worden later op de achtergrond toegevoegd.
         allRestaurantsWithCoords = data.items;
-
-        // 1. RENDER DE LIJST ONMIDDELLIJK
+        
+        // 1. Render de lijst onmiddellijk
         if (restaurantListWrapperEl) restaurantListWrapperEl.innerHTML = '';
         if (data.items.length > 0) {
             data.items.forEach((restaurant, index) => {
@@ -1103,30 +1101,47 @@ function injectAndRenderSlider(targetPlaceholderDiv, sliderKeyFromApi, sliderDis
                     itemEl.addEventListener('click', () => handleListItemClick(restaurant.id));
                     restaurantListWrapperEl.appendChild(itemEl);
                 }
-                // Je slider injectie logica blijft hier perfect werken
-                // ...
+                // Slider injectie blijft hier
+                if ((index + 1) % SLIDER_INJECT_AFTER_N_ITEMS === 0 && (index + 1) < data.items.length) {
+                    const sliderDataKeys = allSliderData ? Object.keys(allSliderData) : [];
+                    if (sliderDataKeys.length > 0) {
+                       const sliderKeyToInject = sliderDataKeys[sliderInjectionCounter % sliderDataKeys.length];
+                       if(allSliderData[sliderKeyToInject] && allSliderData[sliderKeyToInject].length > 0){
+                           let sliderTitle = "Aanbevolen";
+                           if (sliderKeyToInject === 'result_random') sliderTitle = 'Willekeurig Uitgelicht';
+                           else if (sliderKeyToInject === 'result_newest') sliderTitle = 'Nieuwkomers';
+                           else if (sliderKeyToInject === 'result_allergy_rating') sliderTitle = 'Top voor Allergieën';
+                           else if (sliderKeyToInject === 'result_email') sliderTitle = 'Onze Selectie';
+                           const placeholderDiv = document.createElement('div');
+                           restaurantListWrapperEl.appendChild(placeholderDiv);
+                           injectAndRenderSlider(placeholderDiv, sliderKeyToInject, sliderTitle);
+                           sliderInjectionCounter++;
+                       }
+                    }
+                }
             });
             if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'none';
         } else {
             if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'block';
         }
 
-        // 2. START HET GEOCODEREN OP DE ACHTERGROND (DIT BLOKKEERT NIETS)
+        // 2. START HET GEOCODEREN OP DE ACHTERGROND EN GA DIRECT VERDER.
+        //    (Deze regel was in jouw code vervangen door de oude, blokkerende logica)
         geocodeAndPlaceMarkersInBackground(data.items);
-        
-        // Update de UI nu, de gebruiker hoeft niet te wachten op de kaart
-        let newTotalPages = data?.pageTotal ?? 0;
-        let newTotalItems = data?.itemsTotal ?? 0;
-        totalPages = newTotalPages;
-        if (resultsCountTextEl) resultsCountTextEl.textContent = newTotalItems.toString();
+
+        // 3. Update de rest van de UI direct.
+        totalPages = data?.pageTotal ?? 0;
+        if (resultsCountTextEl) resultsCountTextEl.textContent = data?.itemsTotal ?? 0;
         updatePaginationUI();
         initialLoadComplete = true;
 
     } catch (error) {
         console.error("Fout in fetchAndDisplayRestaurants:", error);
-        // ... je bestaande error handling ...
+        totalPages = 0;
+        if (resultsCountTextEl) resultsCountTextEl.textContent = '0';
+        if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'block';
+        updatePaginationUI();
     } finally {
-        // Deze code wordt nu bijna direct uitgevoerd, wat de 'waas' verwijdert.
         isLoading = false;
         if (finsweetLoaderEl) finsweetLoaderEl.style.display = 'none';
         if (restaurantListWrapperEl) restaurantListWrapperEl.style.opacity = '1';
