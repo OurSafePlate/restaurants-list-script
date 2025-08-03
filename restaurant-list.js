@@ -604,11 +604,11 @@ function handleListItemClick(id) {
 }
 
 function highlightSelection(id, openTooltip = false) {
-    document.querySelectorAll('.map-view-list-wrapper .restaurants_item-component').forEach(c => c.classList.remove('is-map-highlighted'));
+    document.querySelectorAll('#map-view-list .restaurants_item-component').forEach(card => card.classList.remove('is-map-highlighted'));
     const listItem = document.querySelector(`#map-view-list [data-restaurant-id='${id}']`);
     if (listItem) listItem.classList.add('is-map-highlighted');
-    
-    // De rest van de functie blijft hetzelfde...
+
+    // Visuele feedback op de kaart
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
     const marker = markers[id];
     if (marker) {
@@ -1224,37 +1224,35 @@ async function initializeSite() {
     return; // Stop de hele functie hier
   }
 
-  // Koppel nu pas de DOM elementen, voor het geval we eerder moesten stoppen.
-  restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
-  templateItemEl = document.querySelector(templateItemSelector);
-  mainSliderTemplateNodeGlobal = document.querySelector(mainSliderTemplateSelector);
-  filterFormEl = document.querySelector(filterFormSelector);
-  searchInputEl = document.querySelector(searchInputSelector);
-  resultsCountTextEl = document.querySelector(resultsCountTextSelector);
-  paginationPrevEl = document.querySelector(paginationPrevButtonSelector);
-  paginationNextEl = document.querySelector(paginationNextButtonSelector);
-  paginationInfoEl = document.querySelector(paginationInfoTextSelector);
-  paginationNumbersContainerEl = document.querySelector(paginationNumbersContainerSelector);
-  finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector);
-  finsweetLoaderEl = document.querySelector(finsweetLoaderSelector);
-  clearAllButtonEl = document.querySelector(clearAllButtonSelector);
-  applyFiltersButtonEl = document.querySelector(applyFiltersButtonSelector);
-  openFiltersButtonEl = document.querySelector(openFiltersButtonSelector);
-  closeFiltersButtonEl = document.querySelector(closeFiltersButtonSelector);
-  filtersPanelEl = document.querySelector(filtersPanelSelector);
-  parentComponentEl = document.querySelector(parentComponentSelector);
-  showMapButtonEl = document.querySelector(showMapButtonSelector);
-  showListButtonEl = document.querySelector(showListButtonSelector);
-  showMapButton = document.querySelector(showMapButtonSelector);	
-  mapElement = document.querySelector(mapElementSelector);
-  locateMeButton = document.querySelector(locateMeButtonSelector);
-  searchAreaButton = document.querySelector(searchAreaButtonSelector);
-  mapOverlay = document.querySelector(mapOverlaySelector);
-  closeMapButton = document.querySelector(closeMapButtonSelector);
-  mapContainer = document.querySelector(mapContainerSelector);
-  mapListContainer = document.querySelector(mapListContainerSelector);
-  filtersToggleButton = document.querySelector(filtersToggleButtonSelector);
-  filterPanel = document.querySelector(filterPanelSelector);
+   // --- STAP 2: KOPPEL DOM ELEMENTEN ---
+    // Hoofdlijst elementen
+    restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
+    templateItemEl = document.querySelector(templateItemSelector);
+    mainSliderTemplateNodeGlobal = document.querySelector(mainSliderTemplateSelector);
+    searchInputEl = document.querySelector(searchInputSelector);
+    resultsCountTextEl = document.querySelector(resultsCountTextSelector);
+    paginationPrevEl = document.querySelector(paginationPrevButtonSelector);
+    paginationNextEl = document.querySelector(paginationNextButtonSelector);
+    paginationNumbersContainerEl = document.querySelector(paginationNumbersContainerSelector);
+    finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector);
+    finsweetLoaderEl = document.querySelector(finsweetLoaderSelector);
+    clearAllButtonEl = document.querySelector(clearAllButtonSelector);
+    applyFiltersButtonEl = document.querySelector(applyFiltersButtonSelector);
+    openFiltersButtonEl = document.querySelector(openFiltersButtonSelector);
+    closeFiltersButtonEl = document.querySelector(closeFiltersButtonSelector);
+    filtersPanelSelector = document.querySelector(filtersPanelSelector);
+
+
+    // Kaart Overlay elementen
+    showMapButton = document.querySelector(showMapButtonSelector);
+    mapOverlay = document.querySelector(mapOverlaySelector);
+    closeMapButton = document.querySelector(closeMapButtonSelector);
+    mapContainer = document.querySelector(mapElementSelector);
+    mapListContainer = document.querySelector(mapListContainerSelector);
+    searchAreaButton = document.querySelector(searchAreaButtonSelector);
+    filtersToggleButton = document.querySelector(filtersToggleButtonSelector);
+    filterPanel = document.querySelector(filterPanelSelector);
+
   
   if (!restaurantListWrapperEl || !templateItemEl) { 
       console.error("Kritische elementen niet gevonden! Stoppen."); 
@@ -1267,31 +1265,17 @@ async function initializeSite() {
   // STAP 2: Haal de slider data op en WACHT.
   await fetchAllSliderDataOnce();
 
-  if (showMapButton) showMapButton.addEventListener('click', (e) => { e.preventDefault(); openMapOverlay(); });
-
-   if (closeMapButton) {
-      closeMapButton.addEventListener('click', (e) => {
-          e.preventDefault();
-          closeMapOverlay();
-      });
-  }
-
-  if (searchAreaButton) {
-      searchAreaButton.addEventListener('click', (e) => {
-          e.preventDefault();
-          handleSearchArea();
-      });
-  }
-
-  if (filtersToggleButton && filterPanel) {
-      filtersToggleButton.addEventListener('click', (e) => {
-          e.preventDefault();
-          // Simpele toggle
-          filterPanel.style.display = (filterPanel.style.display === 'block') ? 'none' : 'block';
-      });
-  }
+  // Listeners voor de Kaart Overlay
+    if (showMapButton) showMapButton.addEventListener('click', (e) => { e.preventDefault(); openMapOverlay(); });
+    if (closeMapButton) closeMapButton.addEventListener('click', (e) => { e.preventDefault(); closeMapOverlay(); });
+    if (searchAreaButton) searchAreaButton.addEventListener('click', (e) => { e.preventDefault(); handleSearchArea(); });
+    if (filtersToggleButton && filterPanel) {
+        filtersToggleButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            filterPanel.style.display = (filterPanel.style.display === 'block') ? 'none' : 'block';
+        });
+    }
 	
-    if (searchAreaButton) searchAreaButton.addEventListener('click', handleSearchArea);
     // --- EINDE AANPASSING 7 ---
 
   // STAP 3: Event Listeners toevoegen (kan nu al, omdat ze pas actief worden na interactie)
