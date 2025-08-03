@@ -130,17 +130,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 async function getAuthToken() {
-    if (xanoAuthToken) return xanoAuthToken; // Geef token terug als we het al hebben
+    if (xanoAuthToken) return xanoAuthToken;
     log("Authenticatie token ophalen...");
     try {
         const response = await fetch(API_AUTH_LOGIN, { method: 'POST' });
-        if (!response.ok) throw new Error('Authenticatie mislukt');
+        if (!response.ok) {
+            throw new Error(`Authenticatie serverfout: ${response.status}`);
+        }
         const data = await response.json();
-        xanoAuthToken = data.authToken;
-        return xanoAuthToken;
+        
+        // --- DIT IS DE CRUCIALE FIX ---
+        // Xano geeft het token terug in een veld genaamd 'authToken', niet als de hele response.
+        if (data.authToken) {
+            xanoAuthToken = data.authToken;
+            log("Authenticatie succesvol, token ontvangen.");
+            return xanoAuthToken;
+        } else {
+            throw new Error("Geen 'authToken' veld gevonden in de response van de auth API.");
+        }
+        // --- EINDE FIX ---
+
     } catch (error) {
         console.error("KRITISCHE FOUT: Authenticatie mislukt.", error);
-        throw error; // Gooi de fout door zodat andere functies stoppen
+        throw error;
     }
 }
 
