@@ -136,36 +136,27 @@ async function getAuthToken() {
         const response = await fetch(API_AUTH_LOGIN, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json' // <-- DE ONTBREKENDE HEADER
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({}) // <-- DE ONTBREKENDE BODY
+            body: JSON.stringify({})
         });
 
         if (!response.ok) {
             throw new Error(`Authenticatie serverfout: ${response.status}`);
         }
-
-        const rawResponse = await response.text();
         
-        // De robuuste check die we eerder hebben gebouwd, blijft nuttig
-        try {
-            const jsonData = JSON.parse(rawResponse);
-            if (jsonData && jsonData.authToken) {
-                xanoAuthToken = jsonData.authToken;
-                log("Authenticatie succesvol (via JSON object).");
-                return xanoAuthToken;
-            }
-        } catch (e) {
-            log("Auth response was geen JSON, probeer als ruwe tekst.");
-        }
-
-        if (rawResponse && typeof rawResponse === 'string' && rawResponse.startsWith('ey')) {
-            xanoAuthToken = rawResponse;
-            log("Authenticatie succesvol (via ruwe tekst).");
+        // De response is een JSON-geformatteerde string.
+        // We gebruiken .json() om het correct uit te pakken.
+        const token = await response.json(); 
+        
+        // Controleer of het resultaat een string is en op een token lijkt.
+        if (token && typeof token === 'string' && token.startsWith('ey')) {
+            xanoAuthToken = token;
+            log("Authenticatie succesvol, token ontvangen.");
             return xanoAuthToken;
+        } else {
+            throw new Error("Ongeldig of onbekend formaat token ontvangen. Verwachtte een pure string.");
         }
-
-        throw new Error("Ongeldig of onbekend formaat token ontvangen van de auth API.");
 
     } catch (error) {
         console.error("KRITISCHE FOUT: Authenticatie mislukt.", error);
