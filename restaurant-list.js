@@ -839,7 +839,7 @@ function renderPageNumbers() {
     log("Huidige filters na handleFilterChange:", currentFilters, "Zoekterm:", currentSearchTerm);
 
     currentPage = 1; 
-    fetchAndDisplayRestaurants();
+    fetchAndDisplayMainList();
 }
   
   let searchDebounceTimer;
@@ -955,44 +955,34 @@ function renderPageNumbers() {
   }
 
 // --- SLIDER LOGICA ---
-async function fetchAllSliderDataOnce() { 
+async function fetchAllSliderDataOnce() {
     log("--- fetchAllSliderDataOnce: FUNCTIE GESTART ---");
-    
-    if (allSliderData !== null) { 
-        log("fetchAllSliderDataOnce: Slider data al aanwezig, wordt niet opnieuw gehaald.");
-        return allSliderData; 
+    if (allSliderData !== null) {
+        log("Slider data al in cache.");
+        return;
     }
 
-    const requestUrl = API_RESTAURANTS_SLIDER; // De URL blijft hetzelfde, zonder parameters
+    const requestUrl = API_RESTAURANTS_SLIDER;
+    const requestBody = { count: 10, exclude_slugs_str: [] };
 
-    // STAP 1: Definieer de body van het POST-verzoek
-    const requestBody = {
-      count: 10,
-      exclude_slugs_str: [] // We sturen nu een echte, lege array zoals uw endpoint verwacht
-    };
-    
-    log("fetchAllSliderDataOnce: API call (POST) naar:", requestUrl, "met body:", requestBody);
-    
     try {
-        // STAP 2: Bouw de fetch opties voor een POST request
-        const fetchOptions = {
+        log("fetchAllSliderDataOnce: API call (POST) naar:", requestUrl);
+        // We gebruiken een directe fetch hier, en voegen handmatig het token toe
+        const token = await getAuthToken(); // Zorg ervoor dat het token beschikbaar is
+        const response = await fetch(requestUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
-                // De 'Authorization' header wordt automatisch toegevoegd door fetchDataWithRetry
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(requestBody) // Converteer het object naar een JSON string
-        };
-
-        // De aanroep met de nieuwe opties
-        allSliderData = await fetchDataWithRetry(requestUrl, fetchOptions);
-        
-        log("fetchAllSliderDataOnce: Data succesvol ontvangen:", allSliderData ? Object.keys(allSliderData) : 'null/leeg');
-        return allSliderData;
+            body: JSON.stringify(requestBody)
+        });
+        if (!response.ok) throw new Error(`Slider API Fout: ${response.status}`);
+        allSliderData = await response.json();
+        log("Slider data succesvol ontvangen.");
     } catch (error) {
         console.error("fetchAllSliderDataOnce: Fout bij ophalen slider data:", error);
-        allSliderData = {}; 
-        return null; 
+        allSliderData = {};
     }
 }
 
@@ -1073,7 +1063,7 @@ function injectAndRenderSlider(targetPlaceholderDiv, sliderKeyFromApi, sliderDis
     }
 }
   
-async function fetchAndDisplayRestaurants() {
+async function fetchAndDisplayMainList() {
     if (isLoading) { log("Al aan het laden..."); return; }
     isLoading = true;
     sliderInjectionCounter = 0;
@@ -1139,7 +1129,7 @@ async function fetchAndDisplayRestaurants() {
         initialLoadComplete = true;
 
     } catch (error) {
-        console.error("Fout in fetchAndDisplayRestaurants:", error);
+        console.error("Fout in fetchAndDisplayMainList:", error);
         totalPages = 0;
         if (resultsCountTextEl) resultsCountTextEl.textContent = '0';
         if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'block';
