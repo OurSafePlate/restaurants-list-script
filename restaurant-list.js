@@ -800,6 +800,10 @@ function renderPageNumbers() {
 
   // --- FUNCTIE OM PAGINATIE UI TE UPDATEN (inclusief paginanummers) ---
   function updatePaginationUI() {
+    const paginationInfoEl = document.querySelector(paginationInfoTextSelector);
+    const paginationPrevEl = document.querySelector(paginationPrevButtonSelector);
+    const paginationNextEl = document.querySelector(paginationNextButtonSelector);
+
     if (paginationInfoEl) {
       paginationInfoEl.textContent = (totalPages > 0 && currentPage > 0) ? `Pagina ${currentPage} van ${totalPages}` : (totalPages === 0 ? 'Geen resultaten' : '');
     }
@@ -812,8 +816,8 @@ function renderPageNumbers() {
       paginationNextEl.style.opacity = (currentPage < totalPages && totalPages > 0) ? '1' : '0.5';
     }
     
-    renderPageNumbers(); // Roep de functie aan om de paginanummers te tekenen
-  }
+    renderPageNumbers(); // Deze functie blijft ongewijzigd
+}
   
   function getSelectedCheckboxDataValues(groupSelector, dataAttributeKebabCase) {
     const group = document.querySelector(groupSelector);
