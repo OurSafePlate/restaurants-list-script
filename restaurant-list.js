@@ -587,7 +587,7 @@ async function handleSearchArea() {
         });
     
         try {
-            const result = await fetchData(`${API_RESTAURANTS_LIST}?${params.toString()}`);
+            const result = await fetchDataWithRetry(`${API_RESTAURANTS_LIST}?${params.toString()}`);
             currentMapRestaurants = result.items || result;
             displayDataOnMap(currentMapRestaurants);
         } catch (error) { console.error("Fout bij zoeken in gebied:", error); }
@@ -1169,9 +1169,8 @@ async function fetchAndDisplayMainList() {
 async function initializeSite() {
     log("Site initialisatie gestart.");
 
-    // STAP 1: Koppel alle DOM elementen
+    // STAP 1: KOPPEL ALLE DOM ELEMENTEN
     log("DOM elementen koppelen...");
-    // Hoofdlijst & Standaard Filters
     restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
     templateItemEl = document.querySelector(templateItemSelector);
     searchInputEl = document.querySelector(searchInputSelector);
@@ -1179,105 +1178,58 @@ async function initializeSite() {
     paginationPrevEl = document.querySelector(paginationPrevButtonSelector);
     paginationNextEl = document.querySelector(paginationNextButtonSelector);
     paginationNumbersContainerEl = document.querySelector(paginationNumbersContainerSelector);
-    applyFiltersButtonEl = document.querySelector(applyFiltersButtonSelector);
     clearAllButtonEl = document.querySelector(clearAllButtonSelector);
+    applyFiltersButtonEl = document.querySelector(applyFiltersButtonSelector);
     openFiltersButtonEl = document.querySelector(openFiltersButtonSelector);
     closeFiltersButtonEl = document.querySelector(closeFiltersButtonSelector);
     filtersPanelEl = document.querySelector('#filters-panel');
-    
-    // Kaart Overlay Elementen
+    mapOverlay = document.querySelector(mapOverlaySelector);
     mapContainer = document.querySelector(mapElementSelector);
     mapListContainer = document.querySelector(mapListContainerSelector);
-    searchAreaButton = document.querySelector(searchAreaButtonSelector);
-    filtersToggleButton = document.querySelector(filtersToggleButtonSelector);
-    filterPanel = document.querySelector('#map-view-filter-panel');
     
-    // De knoppen die door de interaction worden beheerd
-    const showMapButton = document.querySelector(showMapButtonSelector);
-    const closeMapButton = document.querySelector(closeMapButtonSelector);
-
     if (!restaurantListWrapperEl) return console.error("Hoofdlijst wrapper niet gevonden!");
     if (templateItemEl) templateItemEl.style.display = 'none';
 
-    // STAP 3: EVENT LISTENERS KOPPELEN (NU VEEL SIMPELER)
-    log("Event listeners koppelen...");
+    // STAP 2: KOPPEL ALLE EVENT LISTENERS
+    log("Event listeners koppelen via event delegation...");
 
-    // Luister naar de knoppen die de Webflow Interactions triggeren
-    if (showMapButton) showMapButton.addEventListener('click', openMapOverlay);
-    if (closeMapButton) closeMapButton.addEventListener('click', closeMapOverlay);
-	
-    if (target.closest(searchAreaButtonSelector)) {
-        e.preventDefault();
-        handleSearchArea();
-    }
-    if (target.closest(filtersToggleButtonSelector)) {
-        e.preventDefault();
-        const mapFilterPanel = document.querySelector('#map-view-filter-panel');
-        if (mapFilterPanel) {
-            mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
-        }
-    }
+    document.body.addEventListener('click', (e) => {
+        const target = e.target;
 
-    // --- Listeners voor Hoofdlijst Filters & Paginatie ---
-    if (target.closest(applyFiltersButtonSelector)) {
-        e.preventDefault();
-        handleFilterChange();
-        if (window.innerWidth < 992 && filtersPanelEl) filtersPanelEl.classList.remove('is-open');
-    }
-    if (target.closest(clearAllButtonSelector)) {
-        e.preventDefault();
-        if (searchInputEl) searchInputEl.value = '';
-        document.querySelectorAll('#filter-form input[type="checkbox"]').forEach(cb => {
-            const visualCheckbox = cb.previousElementSibling;
-            if (visualCheckbox) visualCheckbox.classList.remove('w--redirected-checked');
-            cb.checked = false;
-        });
-        handleFilterChange(true);
-    }
-    if (target.closest(openFiltersButtonSelector)) {
-        e.preventDefault();
-        if (filtersPanelEl) filtersPanelEl.classList.add('is-open');
-    }
-    if (target.closest(closeFiltersButtonSelector)) {
-        e.preventDefault();
-        if (filtersPanelEl) filtersPanelEl.classList.remove('is-open');
-    }
-    
-    const pageButton = target.closest('[data-page]');
-    if (pageButton) {
-        e.preventDefault();
-        const pageClicked = parseInt(pageButton.dataset.page, 10);
-        if (pageClicked && pageClicked !== currentPage && !isLoading) {
-            currentPage = pageClicked;
-            fetchAndDisplayMainList();
+        // Kaart Overlay
+        if (target.closest(showMapButtonSelector)) { e.preventDefault(); openMapOverlay(); }
+        if (target.closest(closeMapButtonSelector)) { e.preventDefault(); closeMapOverlay(); }
+        if (target.closest(searchAreaButtonSelector)) { e.preventDefault(); handleSearchArea(); }
+        if (target.closest(filtersToggleButtonSelector)) {
+            e.preventDefault();
+            const mapFilterPanel = document.querySelector('#map-view-filter-panel');
+            if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
         }
-    }
-    if (target.closest(paginationPrevButtonSelector)) {
-        e.preventDefault();
-        if (currentPage > 1 && !isLoading) {
-            currentPage--;
-            fetchAndDisplayMainList();
-        }
-    }
-    if (target.closest(paginationNextButtonSelector)) {
-        e.preventDefault();
-        if (currentPage < totalPages && !isLoading) {
-            currentPage++;
-            fetchAndDisplayMainList();
-        }
-    }
 
-// Deze listeners blijven apart omdat ze niet op 'click' reageren
-if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), 500));
+        // Hoofdlijst Filters & Paginatie
+        if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
+        if (target.closest(clearAllButtonSelector)) { e.preventDefault(); handleFilterChange(true); }
+        if (target.closest(openFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.add('is-open'); }
+        if (target.closest(closeFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.remove('is-open'); }
 
-const filterForm = document.querySelector('#filter-form');
-if (filterForm) {
-    filterForm.addEventListener('change', (e) => {
-        if (e.target.type === 'checkbox') {
-            handleFilterChange();
+        const pageButton = target.closest('[data-page]');
+        if (pageButton) {
+            e.preventDefault();
+            const pageClicked = parseInt(pageButton.dataset.page, 10);
+            if (pageClicked && pageClicked !== currentPage && !isLoading) { currentPage = pageClicked; fetchAndDisplayMainList(); }
         }
+        if (target.closest(paginationPrevButtonSelector)) { e.preventDefault(); if (currentPage > 1 && !isLoading) { currentPage--; fetchAndDisplayMainList(); } }
+        if (target.closest(paginationNextButtonSelector)) { e.preventDefault(); if (currentPage < totalPages && !isLoading) { currentPage++; fetchAndDisplayMainList(); } }
     });
-}
+
+    // Aparte listeners voor 'input' en 'change'
+    if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
+    const mainFilterForm = document.querySelector('#filter-form');
+    if (mainFilterForm) {
+        mainFilterForm.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') handleFilterChange();
+        });
+    }
 
  // STAP 2: AUTHENTICATIE & DATA LADEN
     try {
@@ -1297,8 +1249,15 @@ if (filterForm) {
 
     // --- STAP 4: DATA LADEN ---
     log("Initiële data laden...");
-    await fetchAllSliderDataOnce();
-
+    try {
+        if (document.querySelector(finsweetLoaderSelector)) document.querySelector(finsweetLoaderSelector).style.display = 'block';
+        await fetchAllSliderDataOnce();
+        await fetchAndDisplayMainList();
+    } catch (error) {
+        console.error("Fout tijdens de initiële data-load:", error);
+    } finally {
+        if (document.querySelector(finsweetLoaderSelector)) document.querySelector(finsweetLoaderSelector).style.display = 'none';
+    }
 }
 	
   setTimeout(initializeSite, 700); 
