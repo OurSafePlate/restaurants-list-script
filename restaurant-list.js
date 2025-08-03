@@ -1199,22 +1199,6 @@ async function initializeSite() {
     if (!restaurantListWrapperEl) return console.error("Hoofdlijst wrapper niet gevonden!");
     if (templateItemEl) templateItemEl.style.display = 'none';
 
-    // STAP 2: AUTHENTICATIE & DATA LADEN
-    try {
-        if(document.querySelector('[fs-cmsload-element="loader"]')) {
-            document.querySelector('[fs-cmsload-element="loader"]').style.display = 'block';
-        }
-        await getAuthToken(); // Wacht tot het token er is
-        await fetchAllSliderDataOnce(); // Wacht tot slider data er is
-        await fetchAndDisplayMainList(); // Wacht tot de hoofdlijst is geladen
-    } catch (error) {
-        console.error("Fout tijdens initialisatie:", error);
-    } finally {
-        if(document.querySelector('[fs-cmsload-element="loader"]')) {
-            document.querySelector('[fs-cmsload-element="loader"]').style.display = 'none';
-        }
-    }
-
     // STAP 3: EVENT LISTENERS KOPPELEN (NU VEEL SIMPELER)
     log("Event listeners koppelen...");
 
