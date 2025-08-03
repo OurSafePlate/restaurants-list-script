@@ -91,23 +91,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- HULPFUNCTIES ---
   async function fetchDataWithRetry(url, options, retries = API_CALL_RETRIES, attempt = 1) {
     log(`fetchData: Poging ${attempt} voor ${url}`, options ? `met opties` : '');
+    
+    // Wacht ALTIJD tot de getAuthToken functie is voltooid.
+    const token = await getAuthToken(); 
+    
     const requestHeaders = new Headers(options.headers || {});
-
-  if (!xanoAuthToken) {
-        try {
-            const tokenData = await fetch(API_AUTH_LOGIN, { method: 'POST' }).then(res => res.json());
-            xanoAuthToken = tokenData.authToken;
-            log("Token succesvol opgehaald binnen fetchData.");
-        } catch (e) {
-            console.error("Kon token niet ophalen binnen fetchData.", e);
-            throw new Error("Authenticatie mislukt"); // Stop de fetch als token ophalen mislukt
-        }
+    
+    // Voeg het token toe aan de headers.
+    if (token) {
+        requestHeaders.set('Authorization', `Bearer ${token}`);
     }
-  
-  // Controleer of we een token hebben en voeg het toe aan de headers
-  if (xanoAuthToken) {
-    requestHeaders.set('Authorization', `Bearer ${xanoAuthToken}`);
-  }
 
   // Creëer de definitieve opties met de (mogelijk aangepaste) headers
   const finalOptions = {
@@ -1192,6 +1185,13 @@ async function initializeSite() {
         if(finsweetLoaderEl) finsweetLoaderEl.style.display = 'block';
         await getAuthToken();
         log("Authenticatie succesvol.");
+
+     const fetchWasTriggeredByUrl = applyFiltersFromURL();
+    if (!fetchWasTriggeredByUrl) {
+        log("Geen URL-filters, start de standaard fetch voor de hoofdlijst.");
+        await fetchAndDisplayMainList();
+    }
+	    
     } catch (error) {
         console.error("KRITISCHE FOUT: Authenticatie mislukt. Script stopt.", error);
         if(finsweetLoaderEl) finsweetLoaderEl.style.display = 'none';
@@ -1263,11 +1263,6 @@ async function initializeSite() {
     log("Initiële data laden...");
     await fetchAllSliderDataOnce();
 
-    const fetchWasTriggeredByUrl = applyFiltersFromURL();
-    if (!fetchWasTriggeredByUrl) {
-        log("Geen URL-filters, start de standaard fetch voor de hoofdlijst.");
-        await fetchAndDisplayMainList();
-    }
 }
 	
   setTimeout(initializeSite, 700); 
