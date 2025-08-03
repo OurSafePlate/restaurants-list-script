@@ -1224,23 +1224,24 @@ async function initializeSite() {
 
     // --- STAP 3: EVENT LISTENERS KOPPELEN ---
     log("Event listeners koppelen via event delegation...");
+
 document.body.addEventListener('click', function(e) {
     const target = e.target;
 
     // --- Listeners voor de Kaart Overlay ---
-    if (target.matches(showMapButtonSelector) || target.closest(showMapButtonSelector)) {
+    if (target.closest(showMapButtonSelector)) {
         e.preventDefault();
         openMapOverlay();
     }
-    if (target.matches(closeMapButtonSelector) || target.closest(closeMapButtonSelector)) {
+    if (target.closest(closeMapButtonSelector)) {
         e.preventDefault();
         closeMapOverlay();
     }
-    if (target.matches(searchAreaButtonSelector) || target.closest(searchAreaButtonSelector)) {
+    if (target.closest(searchAreaButtonSelector)) {
         e.preventDefault();
         handleSearchArea();
     }
-    if (target.matches(filtersToggleButtonSelector) || target.closest(filtersToggleButtonSelector)) {
+    if (target.closest(filtersToggleButtonSelector)) {
         e.preventDefault();
         const mapFilterPanel = document.querySelector('#map-view-filter-panel');
         if (mapFilterPanel) {
@@ -1249,12 +1250,12 @@ document.body.addEventListener('click', function(e) {
     }
 
     // --- Listeners voor Hoofdlijst Filters & Paginatie ---
-    if (target.matches(applyFiltersButtonSelector) || target.closest(applyFiltersButtonSelector)) {
+    if (target.closest(applyFiltersButtonSelector)) {
         e.preventDefault();
         handleFilterChange();
         if (window.innerWidth < 992 && filtersPanelEl) filtersPanelEl.classList.remove('is-open');
     }
-    if (target.matches(clearAllButtonSelector) || target.closest(clearAllButtonSelector)) {
+    if (target.closest(clearAllButtonSelector)) {
         e.preventDefault();
         if (searchInputEl) searchInputEl.value = '';
         document.querySelectorAll('#filter-form input[type="checkbox"]').forEach(cb => {
@@ -1264,16 +1265,15 @@ document.body.addEventListener('click', function(e) {
         });
         handleFilterChange(true);
     }
-    if (target.matches(openFiltersButtonSelector) || target.closest(openFiltersButtonSelector)) {
+    if (target.closest(openFiltersButtonSelector)) {
         e.preventDefault();
         if (filtersPanelEl) filtersPanelEl.classList.add('is-open');
     }
-    if (target.matches(closeFiltersButtonSelector) || target.closest(closeFiltersButtonSelector)) {
+    if (target.closest(closeFiltersButtonSelector)) {
         e.preventDefault();
         if (filtersPanelEl) filtersPanelEl.classList.remove('is-open');
     }
-
-    // Paginatie
+    
     const pageButton = target.closest('[data-page]');
     if (pageButton) {
         e.preventDefault();
@@ -1283,14 +1283,14 @@ document.body.addEventListener('click', function(e) {
             fetchAndDisplayMainList();
         }
     }
-    if (target.matches(paginationPrevButtonSelector) || target.closest(paginationPrevButtonSelector)) {
+    if (target.closest(paginationPrevButtonSelector)) {
         e.preventDefault();
         if (currentPage > 1 && !isLoading) {
             currentPage--;
             fetchAndDisplayMainList();
         }
     }
-    if (target.matches(paginationNextButtonSelector) || target.closest(paginationNextButtonSelector)) {
+    if (target.closest(paginationNextButtonSelector)) {
         e.preventDefault();
         if (currentPage < totalPages && !isLoading) {
             currentPage++;
@@ -1299,11 +1299,11 @@ document.body.addEventListener('click', function(e) {
     }
 });
 
-// We hebben nog steeds de 'input' en 'change' listeners nodig voor de desktop-filters
-if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
+// Deze listeners blijven apart omdat ze niet op 'click' reageren
+if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), 500));
 
 const filterForm = document.querySelector('#filter-form');
-if(filterForm) {
+if (filterForm) {
     filterForm.addEventListener('change', (e) => {
         if (e.target.type === 'checkbox') {
             handleFilterChange();
