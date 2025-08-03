@@ -1183,9 +1183,7 @@ async function fetchAndDisplayRestaurants() {
             if (finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'block';
         }
 
-        // 2. START HET GEOCODEREN OP DE ACHTERGROND EN GA DIRECT VERDER.
-        //    (Deze regel was in jouw code vervangen door de oude, blokkerende logica)
-        geocodeAndPlaceMarkersInBackground(data.items);
+      
 
         // 3. Update de rest van de UI direct.
         totalPages = data?.pageTotal ?? 0;
