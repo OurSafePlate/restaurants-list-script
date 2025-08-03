@@ -130,46 +130,46 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 async function getAuthToken() {
-    // Als we al een geldig token hebben, gebruik dat dan.
     if (xanoAuthToken) return xanoAuthToken;
-    
     log("Authenticatie token ophalen...");
     try {
-        const response = await fetch(API_AUTH_LOGIN, { method: 'POST' });
+        const response = await fetch(API_AUTH_LOGIN, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json' // <-- DE ONTBREKENDE HEADER
+            },
+            body: JSON.stringify({}) // <-- DE ONTBREKENDE BODY
+        });
+
         if (!response.ok) {
             throw new Error(`Authenticatie serverfout: ${response.status}`);
         }
 
-        // Lees de response eerst als ruwe tekst, zonder aannames.
         const rawResponse = await response.text();
-
-        // POGING 1: Probeer de tekst te parsen als een JSON object.
+        
+        // De robuuste check die we eerder hebben gebouwd, blijft nuttig
         try {
             const jsonData = JSON.parse(rawResponse);
-            // Als het een object is en de sleutel 'authToken' bevat, hebben we ons token.
             if (jsonData && jsonData.authToken) {
                 xanoAuthToken = jsonData.authToken;
                 log("Authenticatie succesvol (via JSON object).");
                 return xanoAuthToken;
             }
         } catch (e) {
-            // Het was geen JSON. Dit is geen fout, we gaan door naar poging 2.
             log("Auth response was geen JSON, probeer als ruwe tekst.");
         }
 
-        // POGING 2: Als het geen JSON was, controleer of de ruwe tekst zelf het token is.
         if (rawResponse && typeof rawResponse === 'string' && rawResponse.startsWith('ey')) {
             xanoAuthToken = rawResponse;
             log("Authenticatie succesvol (via ruwe tekst).");
             return xanoAuthToken;
         }
 
-        // Als beide pogingen mislukken, is de response ongeldig.
         throw new Error("Ongeldig of onbekend formaat token ontvangen van de auth API.");
 
     } catch (error) {
         console.error("KRITISCHE FOUT: Authenticatie mislukt.", error);
-        throw error; // Gooi de fout door zodat het script stopt.
+        throw error;
     }
 }
 	
