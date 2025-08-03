@@ -1250,13 +1250,19 @@ async function initializeSite() {
     // --- STAP 4: DATA LADEN ---
     log("Initiële data laden...");
     try {
-        if (document.querySelector(finsweetLoaderSelector)) document.querySelector(finsweetLoaderSelector).style.display = 'block';
+        if (finsweetLoaderEl) finsweetLoaderEl.style.display = 'block';
+        
+        // De fetch-functies handelen nu zelf de authenticatie af.
         await fetchAllSliderDataOnce();
-        await fetchAndDisplayMainList();
+        
+        const fetchWasTriggeredByUrl = applyFiltersFromURL();
+        if (!fetchWasTriggeredByUrl) {
+            await fetchAndDisplayMainList();
+        }
     } catch (error) {
         console.error("Fout tijdens de initiële data-load:", error);
     } finally {
-        if (document.querySelector(finsweetLoaderSelector)) document.querySelector(finsweetLoaderSelector).style.display = 'none';
+        if (finsweetLoaderEl) finsweetLoaderEl.style.display = 'none';
     }
 }
 	
