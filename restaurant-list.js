@@ -1223,65 +1223,93 @@ async function initializeSite() {
     }
 
     // --- STAP 3: EVENT LISTENERS KOPPELEN ---
-    log("Event listeners koppelen...");
-    
-    // Listeners voor de Kaart Overlay
-    if (showMapButton) showMapButton.addEventListener('click', (e) => { e.preventDefault(); openMapOverlay(); });
-    if (closeMapButton) closeMapButton.addEventListener('click', (e) => { e.preventDefault(); closeMapOverlay(); });
-    if (searchAreaButton) searchAreaButton.addEventListener('click', (e) => { e.preventDefault(); handleSearchArea(); });
-    if (filtersToggleButton) {
+    log("Event listeners koppelen via event delegation...");
+document.body.addEventListener('click', function(e) {
+    const target = e.target;
+
+    // --- Listeners voor de Kaart Overlay ---
+    if (target.matches(showMapButtonSelector) || target.closest(showMapButtonSelector)) {
+        e.preventDefault();
+        openMapOverlay();
+    }
+    if (target.matches(closeMapButtonSelector) || target.closest(closeMapButtonSelector)) {
+        e.preventDefault();
+        closeMapOverlay();
+    }
+    if (target.matches(searchAreaButtonSelector) || target.closest(searchAreaButtonSelector)) {
+        e.preventDefault();
+        handleSearchArea();
+    }
+    if (target.matches(filtersToggleButtonSelector) || target.closest(filtersToggleButtonSelector)) {
+        e.preventDefault();
         const mapFilterPanel = document.querySelector('#map-view-filter-panel');
-        filtersToggleButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (mapFilterPanel) {
-                mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
-            }
-        });
+        if (mapFilterPanel) {
+            mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
+        }
     }
 
-    // Listeners voor de Hoofdlijst
-    function closeMainFiltersPanel() {
+    // --- Listeners voor Hoofdlijst Filters & Paginatie ---
+    if (target.matches(applyFiltersButtonSelector) || target.closest(applyFiltersButtonSelector)) {
+        e.preventDefault();
+        handleFilterChange();
+        if (window.innerWidth < 992 && filtersPanelEl) filtersPanelEl.classList.remove('is-open');
+    }
+    if (target.matches(clearAllButtonSelector) || target.closest(clearAllButtonSelector)) {
+        e.preventDefault();
+        if (searchInputEl) searchInputEl.value = '';
+        document.querySelectorAll('#filter-form input[type="checkbox"]').forEach(cb => {
+            const visualCheckbox = cb.previousElementSibling;
+            if (visualCheckbox) visualCheckbox.classList.remove('w--redirected-checked');
+            cb.checked = false;
+        });
+        handleFilterChange(true);
+    }
+    if (target.matches(openFiltersButtonSelector) || target.closest(openFiltersButtonSelector)) {
+        e.preventDefault();
+        if (filtersPanelEl) filtersPanelEl.classList.add('is-open');
+    }
+    if (target.matches(closeFiltersButtonSelector) || target.closest(closeFiltersButtonSelector)) {
+        e.preventDefault();
         if (filtersPanelEl) filtersPanelEl.classList.remove('is-open');
     }
-    if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
-    if (openFiltersButtonEl && filtersPanelEl) openFiltersButtonEl.addEventListener('click', (e) => { e.preventDefault(); filtersPanelEl.classList.add('is-open'); });
-    if (closeFiltersButtonEl) closeFiltersButtonEl.addEventListener('click', (e) => { e.preventDefault(); closeMainFiltersPanel(); });
-    if (applyFiltersButtonEl) {
-        applyFiltersButtonEl.addEventListener('click', (e) => {
-            e.preventDefault();
-            handleFilterChange();
-            if (window.innerWidth < 992) closeMainFiltersPanel();
-        });
-    }
-    if (clearAllButtonEl) {
-        clearAllButtonEl.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (searchInputEl) searchInputEl.value = '';
-            document.querySelectorAll('#filter-form input[type="checkbox"]').forEach(cb => {
-                const visualCheckbox = cb.previousElementSibling;
-                if (visualCheckbox) visualCheckbox.classList.remove('w--redirected-checked');
-                cb.checked = false;
-            });
-            handleFilterChange(true);
-        });
-    }
 
-    // Paginatie Listeners
-    if (paginationPrevEl) paginationPrevEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage > 1 && !isLoading) { currentPage--; fetchAndDisplayMainList(); } });
-    if (paginationNextEl) paginationNextEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage < totalPages && !isLoading) { currentPage++; fetchAndDisplayMainList(); } });
-    if (paginationNumbersContainerEl) {
-        paginationNumbersContainerEl.addEventListener('click', (e) => {
-            const pageButton = e.target.closest('[data-page]');
-            if (pageButton) {
-                e.preventDefault();
-                const pageClicked = parseInt(pageButton.dataset.page, 10);
-                if (pageClicked && pageClicked !== currentPage && !isLoading) {
-                    currentPage = pageClicked;
-                    fetchAndDisplayMainList();
-                }
-            }
-        });
+    // Paginatie
+    const pageButton = target.closest('[data-page]');
+    if (pageButton) {
+        e.preventDefault();
+        const pageClicked = parseInt(pageButton.dataset.page, 10);
+        if (pageClicked && pageClicked !== currentPage && !isLoading) {
+            currentPage = pageClicked;
+            fetchAndDisplayMainList();
+        }
     }
+    if (target.matches(paginationPrevButtonSelector) || target.closest(paginationPrevButtonSelector)) {
+        e.preventDefault();
+        if (currentPage > 1 && !isLoading) {
+            currentPage--;
+            fetchAndDisplayMainList();
+        }
+    }
+    if (target.matches(paginationNextButtonSelector) || target.closest(paginationNextButtonSelector)) {
+        e.preventDefault();
+        if (currentPage < totalPages && !isLoading) {
+            currentPage++;
+            fetchAndDisplayMainList();
+        }
+    }
+});
+
+// We hebben nog steeds de 'input' en 'change' listeners nodig voor de desktop-filters
+if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
+
+const filterForm = document.querySelector('#filter-form');
+if(filterForm) {
+    filterForm.addEventListener('change', (e) => {
+        if (e.target.type === 'checkbox') {
+            handleFilterChange();
+        }
+    });
+}
 
     // --- STAP 4: DATA LADEN ---
     log("Initiële data laden...");
