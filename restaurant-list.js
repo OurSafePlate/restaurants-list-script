@@ -1153,26 +1153,21 @@ async function fetchAndDisplayRestaurants() {
 
   // --- INITIALISATIE ---
 async function initializeSite() {
-  log("Site initialisatie gestart.");
+    log("Site initialisatie gestart.");
 
-  // STAP 1: Haal het token op en WACHT.
-  try {
-    const response = await fetch(API_AUTH_LOGIN, { method: 'POST' }); 
-    if (!response.ok) {
-      throw new Error(`Authenticatie-server reageerde met status: ${response.status}`);
+    // --- STAP 1: AUTHENTICATIE ---
+    try {
+        const tokenData = await fetch(API_AUTH_LOGIN, { method: 'POST' }).then(res => res.json());
+        xanoAuthToken = tokenData.authToken;
+        log("Authenticatie succesvol.");
+    } catch (error) {
+        console.error("KRITISCHE FOUT: Authenticatie mislukt.", error);
+        return; // Stop de hele applicatie
     }
-  	xanoAuthToken = await response.json(); 
-    console.log("ONTVANGEN TOKEN IN VARIABELE:", xanoAuthToken); // Extra logging
 
-  } catch (error) {
-    console.error("KRITISCHE FOUT: Authenticatie mislukt. Stoppen met initialisatie.", error);
-    if(finsweetLoaderEl) finsweetLoaderEl.style.display = 'none'; // Verberg de lader
-    if(finsweetEmptyStateEl) finsweetEmptyStateEl.style.display = 'block'; // Toon de 'leeg' staat
-    return; // Stop de hele functie hier
-  }
-
-   // --- STAP 2: KOPPEL DOM ELEMENTEN ---
-    // Hoofdlijst elementen
+    // --- STAP 2: KOPPEL ALLE DOM ELEMENTEN ---
+    log("DOM elementen koppelen...");
+    // Hoofdlijst & Filters
     restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
     templateItemEl = document.querySelector(templateItemSelector);
     mainSliderTemplateNodeGlobal = document.querySelector(mainSliderTemplateSelector);
@@ -1181,16 +1176,13 @@ async function initializeSite() {
     paginationPrevEl = document.querySelector(paginationPrevButtonSelector);
     paginationNextEl = document.querySelector(paginationNextButtonSelector);
     paginationNumbersContainerEl = document.querySelector(paginationNumbersContainerSelector);
-    finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector);
-    finsweetLoaderEl = document.querySelector(finsweetLoaderSelector);
     clearAllButtonEl = document.querySelector(clearAllButtonSelector);
     applyFiltersButtonEl = document.querySelector(applyFiltersButtonSelector);
     openFiltersButtonEl = document.querySelector(openFiltersButtonSelector);
     closeFiltersButtonEl = document.querySelector(closeFiltersButtonSelector);
-    filtersPanelSelector = document.querySelector(filtersPanelSelector);
-
-
-    // Kaart Overlay elementen
+    filtersPanelEl = document.querySelector(filtersPanelSelector); // Let op: kan conflict geven met de kaart-filter-panel
+    
+    // Kaart Overlay
     showMapButton = document.querySelector(showMapButtonSelector);
     mapOverlay = document.querySelector(mapOverlaySelector);
     closeMapButton = document.querySelector(closeMapButtonSelector);
@@ -1198,21 +1190,20 @@ async function initializeSite() {
     mapListContainer = document.querySelector(mapListContainerSelector);
     searchAreaButton = document.querySelector(searchAreaButtonSelector);
     filtersToggleButton = document.querySelector(filtersToggleButtonSelector);
-    filterPanel = document.querySelector(filterPanelSelector);
+    filterPanel = document.querySelector(filterPanelSelector); // Wordt dubbel gedeclareerd, check je ID's
+    
+    if (!restaurantListWrapperEl || !templateItemEl) {
+        console.error("Kritische elementen voor de hoofdlijst niet gevonden! Stoppen.");
+        return;
+    }
 
-  
-  if (!restaurantListWrapperEl || !templateItemEl) { 
-      console.error("Kritische elementen niet gevonden! Stoppen."); 
-      return; 
-  }
-  
-  if(templateItemEl) templateItemEl.style.display = 'none';
-  if(mainSliderTemplateNodeGlobal) mainSliderTemplateNodeGlobal.style.display = 'none';
+    if (templateItemEl) templateItemEl.style.display = 'none';
+    if (mainSliderTemplateNodeGlobal) mainSliderTemplateNodeGlobal.style.display = 'none';
 
-  // STAP 2: Haal de slider data op en WACHT.
-  await fetchAllSliderDataOnce();
-
-  // Listeners voor de Kaart Overlay
+    // --- STAP 3: EVENT LISTENERS KOPPELEN ---
+    log("Event listeners koppelen...");
+    
+    // Listeners voor de Kaart Overlay
     if (showMapButton) showMapButton.addEventListener('click', (e) => { e.preventDefault(); openMapOverlay(); });
     if (closeMapButton) closeMapButton.addEventListener('click', (e) => { e.preventDefault(); closeMapOverlay(); });
     if (searchAreaButton) searchAreaButton.addEventListener('click', (e) => { e.preventDefault(); handleSearchArea(); });
@@ -1222,107 +1213,60 @@ async function initializeSite() {
             filterPanel.style.display = (filterPanel.style.display === 'block') ? 'none' : 'block';
         });
     }
-	
-    // --- EINDE AANPASSING 7 ---
 
-  // STAP 3: Event Listeners toevoegen (kan nu al, omdat ze pas actief worden na interactie)
-	// (Hier staan al je event listeners, die blijven ongewijzigd)
-	// Hulpfunctie om het paneel te sluiten
-	function closeFiltersPanel() {
-	  if (filtersPanelEl) {
-	    log("Filter paneel sluiten.");
-	    filtersPanelEl.classList.remove('is-open');
-	  }
-	}
-	// Listener voor de zoekbalk (Desktop-only)
-	if (searchInputEl) {
-	  searchInputEl.addEventListener('input', () => {
-	    if (window.innerWidth >= 992) {
-	      log("Desktop: Zoek-input gewijzigd, direct filteren.");
-	      onSearchInput();
-	    }
-	  });
-	}
-	// Listener voor de checkboxes (Desktop-only)
-	const filterElementsForChange = filterFormEl || document.body;
-	filterElementsForChange.addEventListener('change', (e) => {
-	  if (e.target.type === 'checkbox' && (e.target.closest(keukenCheckboxGroupSelector) || e.target.closest(mealOptionsCheckboxGroupSelector) || e.target.closest(priceCheckboxGroupSelector) ||
-      e.target.closest(allergieCheckboxGroupSelector))) {
-	    if (window.innerWidth >= 992) {
-	      log("Desktop: Checkbox gewijzigd, direct filteren.");
-	      handleFilterChange();
-	    }
-	  }
-	});
-	// Listener voor de 'Open Filters' knop (Mobiel)
-	if (openFiltersButtonEl && filtersPanelEl) {
-	  openFiltersButtonEl.addEventListener('click', () => {
-	    log("Open filters knop geklikt.");
-	    filtersPanelEl.classList.add('is-open');
-	  });
-	}
-	// Listener voor de 'Close Filters' knop (Mobiel)
-	if (closeFiltersButtonEl) {
-	  closeFiltersButtonEl.addEventListener('click', closeFiltersPanel);
-	}
-	// ÉÉN GECOMBINEERDE Listener voor de 'Apply Filters' knop
-	if (applyFiltersButtonEl) {
-	  applyFiltersButtonEl.addEventListener('click', (e) => {
-	    e.preventDefault();
-	    log("Apply filters knop geklikt.");
-	    handleFilterChange(); // Pas altijd de filters toe
-	    if (window.innerWidth < 992) {
-	      closeFiltersPanel(); // Sluit het paneel alleen op mobiel
-	    }
-	  });
-	}
-	if (paginationPrevEl) paginationPrevEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage > 1 && !isLoading) { currentPage--; fetchAndDisplayRestaurants(); } });
-	if (paginationNextEl) paginationNextEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage < totalPages && !isLoading && totalPages > 0) { currentPage++; fetchAndDisplayRestaurants(); } });
-    if (paginationNumbersContainerEl) {
-        paginationNumbersContainerEl.addEventListener('click', (e) => {
-            e.preventDefault(); 
-            const clickedElement = e.target;
-            const pageButton = clickedElement.closest('.pagination-number');
-            if (!pageButton || !pageButton.dataset.page) { return; }
-            const pageClicked = parseInt(pageButton.dataset.page, 10);
-            if (!pageClicked || isNaN(pageClicked) || isLoading || pageClicked === currentPage) { return; }
-            currentPage = pageClicked;
-            fetchAndDisplayRestaurants();
+    // Listeners voor de Hoofdlijst
+    function closeMainFiltersPanel() {
+        if (filtersPanelEl) filtersPanelEl.classList.remove('is-open');
+    }
+    
+    if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
+    if (openFiltersButtonEl && filtersPanelEl) openFiltersButtonEl.addEventListener('click', (e) => { e.preventDefault(); filtersPanelEl.classList.add('is-open'); });
+    if (closeFiltersButtonEl) closeFiltersButtonEl.addEventListener('click', (e) => { e.preventDefault(); closeMainFiltersPanel(); });
+    if (applyFiltersButtonEl) {
+        applyFiltersButtonEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleFilterChange();
+            if (window.innerWidth < 992) closeMainFiltersPanel();
         });
     }
-	if (clearAllButtonEl) {
-    clearAllButtonEl.addEventListener('click', (e) => {
-        e.preventDefault(); 
-        log("Clear all filters geklikt.");
-        if (searchInputEl) { searchInputEl.value = ''; }
-        const allFilterGroupSelectors = [keukenCheckboxGroupSelector, mealOptionsCheckboxGroupSelector, priceCheckboxGroupSelector, allergieCheckboxGroupSelector];
-        allFilterGroupSelectors.forEach(groupSelector => {
-            const groupEl = document.querySelector(groupSelector);
-            if (groupEl) {
-                const checkboxes = groupEl.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.checked = false;
-                    const visualCheckbox = cb.previousElementSibling;
-                    if (visualCheckbox && visualCheckbox.classList.contains('w-checkbox-input')) {
-                        visualCheckbox.classList.remove('w--redirected-checked');
-                    }
-                });
+    if (clearAllButtonEl) {
+        clearAllButtonEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Reset UI (checkboxes, etc.)
+            if (searchInputEl) searchInputEl.value = '';
+            document.querySelectorAll('#filter-form input[type="checkbox"]').forEach(cb => cb.checked = false);
+            handleFilterChange(true); // Reset state en fetch opnieuw
+        });
+    }
+
+    // Paginatie Listeners
+    if (paginationPrevEl) paginationPrevEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage > 1 && !isLoading) { currentPage--; fetchAndDisplayMainList(); } });
+    if (paginationNextEl) paginationNextEl.addEventListener('click', (e) => { e.preventDefault(); if (currentPage < totalPages && !isLoading) { currentPage++; fetchAndDisplayMainList(); } });
+    if (paginationNumbersContainerEl) {
+        paginationNumbersContainerEl.addEventListener('click', (e) => {
+            const pageButton = e.target.closest('[data-page]');
+            if (pageButton) {
+                e.preventDefault();
+                const pageClicked = parseInt(pageButton.dataset.page, 10);
+                if (pageClicked !== currentPage && !isLoading) {
+                    currentPage = pageClicked;
+                    fetchAndDisplayMainList();
+                }
             }
         });
-        handleFilterChange(true);
-    });
-}
-  
-  // STAP 4: VOER DE EERSTE FETCH UIT, REKENING HOUDEND MET URL-PARAMETERS
-  const fetchWasTriggeredByUrl = applyFiltersFromURL();
-  
-  // Als de URL geen filters bevatte, starten we de normale, ongefilterde lijst.
-  log("Initialisatie hoofdlijst...");
-        const fetchWasTriggeredByUrl = applyFiltersFromURL();
-        if (!fetchWasTriggeredByUrl) {
-            await fetchAndDisplayMainList(); // Nieuwe, schone functie voor de hoofdlijst
-  }
-}
+    }
 
+    // --- STAP 4: DATA LADEN ---
+    log("Initiële data laden...");
+    await fetchAllSliderDataOnce(); // Voor de sliders
+
+    // Start het laden van de HOOFDLIJST
+    const fetchWasTriggeredByUrl = applyFiltersFromURL();
+    if (!fetchWasTriggeredByUrl) {
+        log("Geen URL-filters, start de standaard fetch voor de hoofdlijst.");
+        await fetchAndDisplayMainList(); // Hernoemde functie
+    }
+}
+	
   setTimeout(initializeSite, 700); 
 });
