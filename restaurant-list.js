@@ -1282,7 +1282,6 @@ async function initializeSite() {
             fetchAndDisplayMainList();
         }
     }
-});
 
 // Deze listeners blijven apart omdat ze niet op 'click' reageren
 if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), 500));
