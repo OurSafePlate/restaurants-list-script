@@ -20,10 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const parentComponentSelector = '.layout192_component';
   const showMapButtonSelector = '#show-map-button';
-  const showListButtonSelector = '#show-list-button';
-  const mapElementSelector = '#map';
+  const mapElementSelector = '#map-container';
   const locateMeButtonSelector = '#locate-me-button';
-  const searchAreaButtonSelector = '#search-area-button';	
+  const searchAreaButtonSelector = '#map-search-area-button';
+
+  const mapOverlaySelector = '#map-overlay-wrapper';
+  const closeMapButtonSelector = '#map-overlay-close-button';
+  const mapListContainerSelector = '#map-view-list';
+  const filtersToggleButtonSelector = '#map-view-filters-button';
+  const filterPanelSelector = '#map-view-filter-panel';
+
 
   // --- SELECTOREN ---
   const restaurantListWrapperSelector = '#restaurant-list-wrapper'; 
@@ -41,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearAllButtonSelector = '#clear-all-filters-button';
   const applyFiltersButtonSelector = '#apply-filters-button';
   const openFiltersButtonSelector = '#open-filters-button';
-	const closeFiltersButtonSelector = '#close-filters-button';
+  const closeFiltersButtonSelector = '#close-filters-button';
   const filtersPanelSelector = '#filters-panel';
 
   const resultsCountTextSelector = '.restaurants_results_count'; 
@@ -70,13 +76,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let isMapInitialized = false; // Vlag om te zien of de kaart al geladen is
   let allRestaurantsWithCoords = []; // Cache voor de data van de huidige pagina
   let userLocationMarker;
+  let currentMapRestaurants = []; // Slaat de resultaten op die op de kaart getoond worden	
 
   // --- DOM ELEMENTEN ---
   let restaurantListWrapperEl, templateItemEl, mainSliderTemplateNodeGlobal, filterFormEl, searchInputEl,
     resultsCountTextEl, paginationPrevEl, paginationNextEl, paginationInfoEl, paginationNumbersContainerEl,
     finsweetEmptyStateEl, finsweetLoaderEl, clearAllButtonEl, applyFiltersButtonEl, openFiltersButtonEl,
-    closeFiltersButtonEl, filtersPanelEl, parentComponentEl, showMapButtonEl, showListButtonEl, mapElement, 
-    locateMeButton, searchAreaButton;
+    closeFiltersButtonEl, showMapButton, mapOverlay, closeMapButton, mapContainer, mapListContainer,
+    searchAreaButton, filtersToggleButton, filterPanel;
 
   // --- LOG FUNCTIE ---
   function log(...args) {
@@ -514,22 +521,28 @@ function initMap() {
 }
 
 function createMarker(restaurant) {
-    if (!restaurant.coords || !map) return;
-    const marker = L.circleMarker(restaurant.coords, {
-        renderer: L.svg(), radius: 8, fillColor: '#28a745',
-        color: '#ffffff', weight: 2, fillOpacity: 0.9
-    }).addTo(map).bindTooltip(restaurant.Name);
+    // We gebruiken nu de aparte lat/lng velden uit je database
+    const lat = restaurant.restaurant_latitude;
+    const lon = restaurant.restaurant_longitude;
 
+    if (!lat || !lon || !map) return;
+
+    // Custom icoon zoals TripAdvisor
+    const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
+    const customIcon = L.divIcon({
+        html: `<div class="map-marker-custom"><img src="URL_NAAR_VLEUGEL_ICOON.svg" class="map-marker-icon"><span class="map-marker-rating">${ratingText}</span></div>`,
+        className: 'custom-div-icon', // Belangrijk voor styling
+        iconSize: [40, 40],
+        iconAnchor: [20, 40]
+    });
+
+    const marker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
+
+    marker.bindTooltip(restaurant.Name);
     marker.on('click', () => handleMarkerClick(restaurant.id));
     markers[restaurant.id] = marker;
 }
 
-function displayMarkersForCurrentList() {
-    if (!map || !isMapInitialized) return;
-    Object.values(markers).forEach(marker => map.removeLayer(marker));
-    markers = {};
-    allRestaurantsWithCoords.forEach(restaurant => createMarker(restaurant));
-}
 
 function handleLocateMe() {
     if (!map) return;
@@ -551,79 +564,59 @@ function handleLocateMe() {
     });
 }
 
-function handleSearchArea() {
+async function handleSearchArea() {
     if (!map) return;
+    if(searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
+
     const bounds = map.getBounds();
-    // Deze functie is complexer met een API. Voor nu filteren we de client-side data.
-    // Voor een echte "zoek dit gebied" zou je de 'bounds' naar je Xano API moeten sturen.
-    const visibleRestaurants = allRestaurantsWithCoords.filter(r => r.coords && bounds.contains(r.coords));
-    
-    // Simpele feedback voor de gebruiker
-    alert(`Er zijn ${visibleRestaurants.length} van de geladen restaurants zichtbaar in dit gebied.`);
-    log("Zichtbare restaurants:", visibleRestaurants);
+    const params = {
+        sw_lat: bounds.getSouthWest().lat,
+        sw_lng: bounds.getSouthWest().lng,
+        ne_lat: bounds.getNorthEast().lat,
+        ne_lng: bounds.getNorthEast().lng,
+        // Zorg ervoor dat je Xano API ook de 'user_lat' en 'user_lng' als niet-verplichte inputs heeft
+        user_lat: map.getCenter().lat,
+        user_lng: map.getCenter().lng,
+        // Voeg hier eventuele filterwaarden uit het map-filter-panel toe
+    };
+
+    try {
+        const result = await fetchRestaurantsForMap(params);
+        currentMapRestaurants = result.items || result;
+        displayDataOnMap(currentMapRestaurants);
+    } catch (error) { console.error("Fout bij zoeken:", error); }
 }
-
-function showMapView() {
-    if (!parentComponentEl) return;
-    log("showMapView: Overschakelen naar kaartweergave.");
-    if (showMapButtonEl) showMapButtonEl.style.display = 'none';
-    if (showListButtonEl) showListButtonEl.style.display = 'flex'; // of block
-    parentComponentEl.classList.add('map-view-active');
-
-    if (!isMapInitialized) {
-        initMap();
-        displayMarkersForCurrentList();
-    } else {
-        setTimeout(() => map.invalidateSize(), 50);
+	
+function handleMarkerClick(id) {
+    const listItem = document.querySelector(`#map-view-list [data-restaurant-id='${id}']`);
+    if (listItem) {
+        listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        highlightSelection(id, true);
     }
-}
-
-function showListView() {
-    if (!parentComponentEl) return;
-    log("showListView: Overschakelen naar lijstweergave.");
-    if (showMapButtonEl) showMapButtonEl.style.display = 'flex'; // of block
-    if (showListButtonEl) showListButtonEl.style.display = 'none';
-    parentComponentEl.classList.remove('map-view-active');
 }
 
 function handleListItemClick(id) {
-    if (!map || !isMapInitialized) return;
-    const restaurant = allRestaurantsWithCoords.find(r => r.id === id);
-    const marker = markers[id];
-    if (restaurant && restaurant.coords && marker) {
-        map.flyTo(restaurant.coords, 16);
-        marker.openTooltip();
-        highlightSelection(id);
+    const restaurant = currentMapRestaurants.find(r => r.id === id);
+    if (restaurant && map) {
+        map.flyTo([restaurant.restaurant_latitude, restaurant.restaurant_longitude], 16);
+        highlightSelection(id, false);
     }
 }
 
-function handleMarkerClick(id) {
-    const listItem = restaurantListWrapperEl.querySelector(`[data-restaurant-id='${id}']`);
-    if (listItem) {
-        listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        highlightSelection(id);
-    }
-}
-
-function highlightSelection(id) {
-    document.querySelectorAll('.restaurants_item-component').forEach(card => card.classList.remove('is-highlighted'));
-    Object.values(markers).forEach(m => m.setStyle({ radius: 8, fillColor: '#28a745' }));
-
-    const listItem = restaurantListWrapperEl.querySelector(`[data-restaurant-id='${id}']`);
-    if (listItem) listItem.classList.add('is-highlighted');
+function highlightSelection(id, openTooltip = false) {
+    document.querySelectorAll('.map-view-list-wrapper .restaurants_item-component').forEach(c => c.classList.remove('is-map-highlighted'));
+    const listItem = document.querySelector(`#map-view-list [data-restaurant-id='${id}']`);
+    if (listItem) listItem.classList.add('is-map-highlighted');
     
+    // De rest van de functie blijft hetzelfde...
+    Object.values(markers).forEach(m => m.setZIndexOffset(0));
     const marker = markers[id];
     if (marker) {
-        marker.setStyle({ radius: 12, fillColor: '#1e7e34' });
-        marker.bringToFront();
+        marker.setZIndexOffset(1000);
+        if (openTooltip) marker.openTooltip();
     }
 }
 
-async function geocodeAndPlaceMarkersInBackground(restaurants) {
-    if (!isMapInitialized || !Array.isArray(restaurants)) {
-        // Doe niets als de kaart niet eens zichtbaar is
-        return;
-    }
     
     // Maak de kaart leeg voor de nieuwe markers
     Object.values(markers).forEach(marker => map.removeLayer(marker));
@@ -663,7 +656,72 @@ async function geocodeAndPlaceMarkersInBackground(restaurants) {
     }
     log("Achtergrond geocoding voltooid.");
 }
-	
+
+function openMapOverlay() {
+    if (!mapOverlay) return;
+    log("Kaart overlay openen...");
+    mapOverlay.classList.add('is-visible');
+    document.body.style.overflow = 'hidden'; // Voorkom scrollen van de achtergrond
+
+    if (!isMapInitialized) {
+        initMap(); // Initialiseer de kaart alleen de eerste keer
+        handleSearchArea(); // Voer direct een zoekopdracht uit
+    }
+}
+
+function closeMapOverlay() {
+    if (!mapOverlay) return;
+    log("Kaart overlay sluiten...");
+    mapOverlay.classList.remove('is-visible');
+    document.body.style.overflow = ''; // Sta scrollen weer toe
+}
+
+async function fetchRestaurantsForMap(params = {}) {
+        if (!xanoAuthToken) xanoAuthToken = await getAuthToken();
+
+        const url = new URL(API_RESTAURANTS_LIST);
+        // Voeg alle parameters toe
+        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+        
+        log("API call naar:", url.toString());
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${xanoAuthToken}` } });
+        if (!response.ok) throw new Error("Kon restaurants niet ophalen");
+        return response.json();
+    }
+
+function displayDataOnMap(restaurants) {
+        // Leegmaken
+        if (mapListContainer) mapListContainer.innerHTML = '';
+        Object.values(markers).forEach(marker => map.removeLayer(marker));
+        markers = {};
+
+        const template = document.querySelector(mapListTemplateSelector);
+        if (!template) return;
+
+        restaurants.forEach(restaurant => {
+            // Maak marker
+            const lat = restaurant.restaurant_latitude;
+            const lon = restaurant.restaurant_longitude;
+            if (lat && lon && map) {
+                const marker = L.marker([lat, lon], { 
+                    icon: createCustomMarkerIcon(restaurant.allergy_rating)
+                }).addTo(map);
+                marker.bindTooltip(restaurant.Name);
+                marker.on('click', () => handleMarkerClick(restaurant.id));
+                markers[restaurant.id] = marker;
+            }
+
+            // Maak lijst item
+            const newItem = template.cloneNode(true);
+            // Je bestaande render-logica kan hier worden hergebruikt
+            newItem.querySelector('.restaurants_title').textContent = restaurant.Name;
+            // ... vul de rest van de velden in (adres, keuken, rating, etc.)...
+            
+            newItem.dataset.restaurantId = restaurant.id;
+            newItem.addEventListener('click', () => handleListItemClick(restaurant.id));
+            if (mapListContainer) mapListContainer.appendChild(newItem);
+        });
+    }	
 	
 // --- FUNCTIE OM PAGINANUMMERS TE RENDEREN ---
 function renderPageNumbers() {
@@ -1189,9 +1247,16 @@ async function initializeSite() {
   parentComponentEl = document.querySelector(parentComponentSelector);
   showMapButtonEl = document.querySelector(showMapButtonSelector);
   showListButtonEl = document.querySelector(showListButtonSelector);
+  showMapButton = document.querySelector(showMapButtonSelector);	
   mapElement = document.querySelector(mapElementSelector);
   locateMeButton = document.querySelector(locateMeButtonSelector);
   searchAreaButton = document.querySelector(searchAreaButtonSelector);
+  mapOverlay = document.querySelector(mapOverlaySelector);
+  closeMapButton = document.querySelector(closeMapButtonSelector);
+  mapContainer = document.querySelector(mapContainerSelector);
+  mapListContainer = document.querySelector(mapListContainerSelector);
+  filtersToggleButton = document.querySelector(filtersToggleButtonSelector);
+  filterPanel = document.querySelector(filterPanelSelector);
   
   if (!restaurantListWrapperEl || !templateItemEl) { 
       console.error("Kritische elementen niet gevonden! Stoppen."); 
@@ -1204,20 +1269,30 @@ async function initializeSite() {
   // STAP 2: Haal de slider data op en WACHT.
   await fetchAllSliderDataOnce();
 
-  if (showMapButtonEl) {
-        showMapButtonEl.addEventListener('click', (e) => {
-            e.preventDefault();
-            showMapView();
-        });
-    }
-    if (showListButtonEl) {
-        showListButtonEl.addEventListener('click', (e) => {
-            e.preventDefault();
-            showListView();
-        });
-        showListButtonEl.style.display = 'none'; // Standaard verbergen
-    }
-    if (locateMeButton) locateMeButton.addEventListener('click', handleLocateMe);
+  if (showMapButton) showMapButton.addEventListener('click', (e) => { e.preventDefault(); openMapOverlay(); });
+
+   if (closeMapButton) {
+      closeMapButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          closeMapOverlay();
+      });
+  }
+
+  if (searchAreaButton) {
+      searchAreaButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          handleSearchArea();
+      });
+  }
+
+  if (filtersToggleButton && filterPanel) {
+      filtersToggleButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          // Simpele toggle
+          filterPanel.style.display = (filterPanel.style.display === 'block') ? 'none' : 'block';
+      });
+  }
+	
     if (searchAreaButton) searchAreaButton.addEventListener('click', handleSearchArea);
     // --- EINDE AANPASSING 7 ---
 
