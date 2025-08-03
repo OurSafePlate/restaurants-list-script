@@ -1295,6 +1295,22 @@ if (filterForm) {
     });
 }
 
+ // STAP 2: AUTHENTICATIE & DATA LADEN
+    try {
+        if(document.querySelector('[fs-cmsload-element="loader"]')) {
+            document.querySelector('[fs-cmsload-element="loader"]').style.display = 'block';
+        }
+        await getAuthToken(); // Wacht tot het token er is
+        await fetchAllSliderDataOnce(); // Wacht tot slider data er is
+        await fetchAndDisplayMainList(); // Wacht tot de hoofdlijst is geladen
+    } catch (error) {
+        console.error("Fout tijdens initialisatie:", error);
+    } finally {
+        if(document.querySelector('[fs-cmsload-element="loader"]')) {
+            document.querySelector('[fs-cmsload-element="loader"]').style.display = 'none';
+        }
+    }
+
     // --- STAP 4: DATA LADEN ---
     log("Initiële data laden...");
     await fetchAllSliderDataOnce();
