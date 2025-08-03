@@ -618,44 +618,6 @@ function highlightSelection(id, openTooltip = false) {
 }
 
     
-    // Maak de kaart leeg voor de nieuwe markers
-    Object.values(markers).forEach(marker => map.removeLayer(marker));
-    markers = {};
-
-    log(`Start achtergrond geocoding voor ${restaurants.length} items.`);
-
-    for (const restaurant of restaurants) {
-        // Vind de corresponderende entry in onze state-cache en update deze
-        const restaurantInState = allRestaurantsWithCoords.find(r => r.id === restaurant.id);
-        if (!restaurantInState) continue;
-
-        // Als we al coördinaten hebben, gebruik die dan
-        if (restaurantInState.coords) {
-            createMarker(restaurantInState);
-            continue; // Ga naar de volgende
-        }
-        
-        // Zo niet, haal ze op
-        const addressString = `${restaurant.restaurant_address}, ${restaurant.restaurant_postal_code} ${restaurant.restaurant_city}`;
-        try {
-            // Wacht netjes tussen de requests
-            await new Promise(resolve => setTimeout(resolve, 1100));
-            
-            const response = await fetch(`${NOMINATIM_GEOCODE_ENDPOINT}${encodeURIComponent(addressString)}`);
-            const data = await response.json();
-            
-            if (data && data.length > 0) {
-                // Sla de coördinaten op in de state
-                restaurantInState.coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-                // Maak direct de marker aan
-                createMarker(restaurantInState);
-            }
-        } catch (error) {
-            console.error(`Geocoding Fout op achtergrond voor ${addressString}:`, error);
-        }
-    }
-    log("Achtergrond geocoding voltooid.");
-}
 
 function openMapOverlay() {
     if (!mapOverlay) return;
