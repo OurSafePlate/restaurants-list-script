@@ -125,6 +125,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+async function getAuthToken() {
+    if (xanoAuthToken) return xanoAuthToken; // Geef token terug als we het al hebben
+    log("Authenticatie token ophalen...");
+    try {
+        const response = await fetch(API_AUTH_LOGIN, { method: 'POST' });
+        if (!response.ok) throw new Error('Authenticatie mislukt');
+        const data = await response.json();
+        xanoAuthToken = data.authToken;
+        return xanoAuthToken;
+    } catch (error) {
+        console.error("KRITISCHE FOUT: Authenticatie mislukt.", error);
+        throw error; // Gooi de fout door zodat andere functies stoppen
+    }
+}
+
 // --- NIEUWE FUNCTIE: FILTERS UIT URL LEZEN EN TOEPASSEN ---
 function applyFiltersFromURL() {
     log("applyFiltersFromURL: Functie gestart. Controleren op URL-parameters...");
