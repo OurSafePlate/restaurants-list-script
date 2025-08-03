@@ -74,16 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let map;
   let markers = {}; // { restaurantId: markerObject }
   let isMapInitialized = false; // Vlag om te zien of de kaart al geladen is
-  let allRestaurantsWithCoords = []; // Cache voor de data van de huidige pagina
-  let userLocationMarker;
   let currentMapRestaurants = []; // Slaat de resultaten op die op de kaart getoond worden	
 
   // --- DOM ELEMENTEN ---
-  let restaurantListWrapperEl, templateItemEl, mainSliderTemplateNodeGlobal, filterFormEl, searchInputEl,
-    resultsCountTextEl, paginationPrevEl, paginationNextEl, paginationInfoEl, paginationNumbersContainerEl,
-    finsweetEmptyStateEl, finsweetLoaderEl, clearAllButtonEl, applyFiltersButtonEl, openFiltersButtonEl,
-    closeFiltersButtonEl, showMapButton, mapOverlay, closeMapButton, mapContainer, mapListContainer,
-    searchAreaButton, filtersToggleButton, filterPanel;
+   let restaurantListWrapperEl, templateItemEl, mainSliderTemplateNodeGlobal, searchInputEl,
+        resultsCountTextEl, paginationPrevEl, paginationNextEl, paginationNumbersContainerEl,
+        applyFiltersButtonEl, clearAllButtonEl, showMapButton, mapOverlay, closeMapButton,
+        mapContainer, mapListContainer, searchAreaButton, filtersToggleButton, filterPanel;
 
   // --- LOG FUNCTIE ---
   function log(...args) {
@@ -505,20 +502,16 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
 }
 
 function initMap() {
-    log("initMap: Kaart wordt voor de eerste keer geïnitialiseerd.");
-    if (!mapElement) {
-        log("Kan kaart niet initialiseren: mapElement niet gevonden.");
-        return;
+        if (isMapInitialized || !mapContainer) return;
+        log("Kaart initialiseren...");
+        map = L.map(mapContainer).setView([51.985, 5.913], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap © CARTO', maxZoom: 20
+        }).addTo(map);
+        isMapInitialized = true;
+        map.on('moveend', () => { if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block'; });
+        setTimeout(() => map.invalidateSize(), 400);
     }
-    map = L.map(mapElement).setView(INITIAL_COORDS, INITIAL_ZOOM);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CARTO',
-        maxZoom: 20
-    }).addTo(map);
-
-    isMapInitialized = true;
-    setTimeout(() => map.invalidateSize(), 200); // Essentieel na tonen!
-}
 
 function createMarker(restaurant) {
     // We gebruiken nu de aparte lat/lng velden uit je database
@@ -565,27 +558,22 @@ function handleLocateMe() {
 }
 
 async function handleSearchArea() {
-    if (!map) return;
-    if(searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
-
-    const bounds = map.getBounds();
-    const params = {
-        sw_lat: bounds.getSouthWest().lat,
-        sw_lng: bounds.getSouthWest().lng,
-        ne_lat: bounds.getNorthEast().lat,
-        ne_lng: bounds.getNorthEast().lng,
-        // Zorg ervoor dat je Xano API ook de 'user_lat' en 'user_lng' als niet-verplichte inputs heeft
-        user_lat: map.getCenter().lat,
-        user_lng: map.getCenter().lng,
-        // Voeg hier eventuele filterwaarden uit het map-filter-panel toe
-    };
-
-    try {
-        const result = await fetchRestaurantsForMap(params);
-        currentMapRestaurants = result.items || result;
-        displayDataOnMap(currentMapRestaurants);
-    } catch (error) { console.error("Fout bij zoeken:", error); }
-}
+        if (!map) return;
+        if(searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
+    
+        const bounds = map.getBounds();
+        const params = new URLSearchParams({
+            sw_lat: bounds.getSouthWest().lat, sw_lng: bounds.getSouthWest().lng,
+            ne_lat: bounds.getNorthEast().lat, ne_lng: bounds.getNorthEast().lng,
+            // Je kunt hier ook user_lat/lng meesturen als je API dat ondersteunt voor sorteren
+        });
+    
+        try {
+            const result = await fetchData(`${API_RESTAURANTS_LIST}?${params.toString()}`);
+            currentMapRestaurants = result.items || result;
+            displayDataOnMap(currentMapRestaurants);
+        } catch (error) { console.error("Fout bij zoeken in gebied:", error); }
+    }
 	
 function handleMarkerClick(id) {
     const listItem = document.querySelector(`#map-view-list [data-restaurant-id='${id}']`);
@@ -620,23 +608,20 @@ function highlightSelection(id, openTooltip = false) {
     
 
 function openMapOverlay() {
-    if (!mapOverlay) return;
-    log("Kaart overlay openen...");
-    mapOverlay.classList.add('is-visible');
-    document.body.style.overflow = 'hidden'; // Voorkom scrollen van de achtergrond
-
-    if (!isMapInitialized) {
-        initMap(); // Initialiseer de kaart alleen de eerste keer
-        handleSearchArea(); // Voer direct een zoekopdracht uit
+        if (!mapOverlay) return;
+        mapOverlay.classList.add('is-visible');
+        document.body.style.overflow = 'hidden';
+        if (!isMapInitialized) {
+            initMap();
+            handleSearchArea();
+        }
     }
-}
 
-function closeMapOverlay() {
-    if (!mapOverlay) return;
-    log("Kaart overlay sluiten...");
-    mapOverlay.classList.remove('is-visible');
-    document.body.style.overflow = ''; // Sta scrollen weer toe
-}
+    function closeMapOverlay() {
+        if (!mapOverlay) return;
+        mapOverlay.classList.remove('is-visible');
+        document.body.style.overflow = '';
+    }
 
 async function fetchRestaurantsForMap(params = {}) {
         if (!xanoAuthToken) xanoAuthToken = await getAuthToken();
@@ -1332,9 +1317,10 @@ async function initializeSite() {
   const fetchWasTriggeredByUrl = applyFiltersFromURL();
   
   // Als de URL geen filters bevatte, starten we de normale, ongefilterde lijst.
-  if (!fetchWasTriggeredByUrl) {
-    log("Initialisatie: Geen URL-filters, start de standaard fetch.");
-    await fetchAndDisplayRestaurants();
+  log("Initialisatie hoofdlijst...");
+        const fetchWasTriggeredByUrl = applyFiltersFromURL();
+        if (!fetchWasTriggeredByUrl) {
+            await fetchAndDisplayMainList(); // Nieuwe, schone functie voor de hoofdlijst
   }
 }
 
