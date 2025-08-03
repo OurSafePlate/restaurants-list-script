@@ -1142,22 +1142,26 @@ async function fetchAndDisplayMainList() {
 }
 
   // --- INITIALISATIE ---
+// ========================================================================
+// VERVANG JE VOLLEDIGE initializeSite FUNCTIE MET DEZE VERSIE
+// ========================================================================
 async function initializeSite() {
     log("Site initialisatie gestart.");
 
     // --- STAP 1: AUTHENTICATIE ---
+    // Deze aanroep is nu veilig omdat getAuthToken() globaal gedefinieerd is.
     try {
-        const tokenData = await fetch(API_AUTH_LOGIN, { method: 'POST' }).then(res => res.json());
-        xanoAuthToken = tokenData.authToken;
+        await getAuthToken();
         log("Authenticatie succesvol.");
     } catch (error) {
-        console.error("KRITISCHE FOUT: Authenticatie mislukt.", error);
+        console.error("KRITISCHE FOUT: Authenticatie mislukt. Script stopt.", error);
         return; // Stop de hele applicatie
     }
 
     // --- STAP 2: KOPPEL ALLE DOM ELEMENTEN ---
     log("DOM elementen koppelen...");
-    // Hoofdlijst & Filters
+    
+    // Hoofdlijst & Standaard Filters
     restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
     templateItemEl = document.querySelector(templateItemSelector);
     mainSliderTemplateNodeGlobal = document.querySelector(mainSliderTemplateSelector);
@@ -1170,9 +1174,9 @@ async function initializeSite() {
     applyFiltersButtonEl = document.querySelector(applyFiltersButtonSelector);
     openFiltersButtonEl = document.querySelector(openFiltersButtonSelector);
     closeFiltersButtonEl = document.querySelector(closeFiltersButtonSelector);
-    filtersPanelEl = document.querySelector(filtersPanelSelector); // Let op: kan conflict geven met de kaart-filter-panel
+    filtersPanelEl = document.querySelector('#filters-panel'); // Specifieke ID voor hoofdlijst-paneel
     
-    // Kaart Overlay
+    // Kaart Overlay Elementen
     showMapButton = document.querySelector(showMapButtonSelector);
     mapOverlay = document.querySelector(mapOverlaySelector);
     closeMapButton = document.querySelector(closeMapButtonSelector);
@@ -1180,13 +1184,14 @@ async function initializeSite() {
     mapListContainer = document.querySelector(mapListContainerSelector);
     searchAreaButton = document.querySelector(searchAreaButtonSelector);
     filtersToggleButton = document.querySelector(filtersToggleButtonSelector);
-    filterPanel = document.querySelector(filterPanelSelector); // Wordt dubbel gedeclareerd, check je ID's
-    
+    filterPanel = document.querySelector(filterPanelSelector); // Let op: deze wordt dubbel gebruikt, zie hieronder
+
     if (!restaurantListWrapperEl || !templateItemEl) {
         console.error("Kritische elementen voor de hoofdlijst niet gevonden! Stoppen.");
         return;
     }
-
+    
+    // Template items verbergen
     if (templateItemEl) templateItemEl.style.display = 'none';
     if (mainSliderTemplateNodeGlobal) mainSliderTemplateNodeGlobal.style.display = 'none';
 
@@ -1197,10 +1202,13 @@ async function initializeSite() {
     if (showMapButton) showMapButton.addEventListener('click', (e) => { e.preventDefault(); openMapOverlay(); });
     if (closeMapButton) closeMapButton.addEventListener('click', (e) => { e.preventDefault(); closeMapOverlay(); });
     if (searchAreaButton) searchAreaButton.addEventListener('click', (e) => { e.preventDefault(); handleSearchArea(); });
-    if (filtersToggleButton && filterPanel) {
+    if (filtersToggleButton) {
+        const mapFilterPanel = document.querySelector('#map-view-filter-panel'); // Gebruik unieke ID
         filtersToggleButton.addEventListener('click', (e) => {
             e.preventDefault();
-            filterPanel.style.display = (filterPanel.style.display === 'block') ? 'none' : 'block';
+            if (mapFilterPanel) {
+                mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
+            }
         });
     }
 
@@ -1222,10 +1230,9 @@ async function initializeSite() {
     if (clearAllButtonEl) {
         clearAllButtonEl.addEventListener('click', (e) => {
             e.preventDefault();
-            // Reset UI (checkboxes, etc.)
             if (searchInputEl) searchInputEl.value = '';
             document.querySelectorAll('#filter-form input[type="checkbox"]').forEach(cb => cb.checked = false);
-            handleFilterChange(true); // Reset state en fetch opnieuw
+            handleFilterChange(true);
         });
     }
 
@@ -1238,7 +1245,7 @@ async function initializeSite() {
             if (pageButton) {
                 e.preventDefault();
                 const pageClicked = parseInt(pageButton.dataset.page, 10);
-                if (pageClicked !== currentPage && !isLoading) {
+                if (pageClicked && pageClicked !== currentPage && !isLoading) {
                     currentPage = pageClicked;
                     fetchAndDisplayMainList();
                 }
@@ -1248,13 +1255,12 @@ async function initializeSite() {
 
     // --- STAP 4: DATA LADEN ---
     log("Initiële data laden...");
-    await fetchAllSliderDataOnce(); // Voor de sliders
+    await fetchAllSliderDataOnce();
 
-    // Start het laden van de HOOFDLIJST
     const fetchWasTriggeredByUrl = applyFiltersFromURL();
     if (!fetchWasTriggeredByUrl) {
         log("Geen URL-filters, start de standaard fetch voor de hoofdlijst.");
-        await fetchAndDisplayMainList(); // Hernoemde functie
+        await fetchAndDisplayMainList();
     }
 }
 	
