@@ -92,6 +92,17 @@ document.addEventListener('DOMContentLoaded', () => {
   async function fetchDataWithRetry(url, options, retries = API_CALL_RETRIES, attempt = 1) {
     log(`fetchData: Poging ${attempt} voor ${url}`, options ? `met opties` : '');
     const requestHeaders = new Headers(options.headers || {});
+
+  if (!xanoAuthToken) {
+        try {
+            const tokenData = await fetch(API_AUTH_LOGIN, { method: 'POST' }).then(res => res.json());
+            xanoAuthToken = tokenData.authToken;
+            log("Token succesvol opgehaald binnen fetchData.");
+        } catch (e) {
+            console.error("Kon token niet ophalen binnen fetchData.", e);
+            throw new Error("Authenticatie mislukt"); // Stop de fetch als token ophalen mislukt
+        }
+    }
   
   // Controleer of we een token hebben en voeg het toe aan de headers
   if (xanoAuthToken) {
