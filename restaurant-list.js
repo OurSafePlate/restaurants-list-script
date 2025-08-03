@@ -624,22 +624,24 @@ function highlightSelection(id, openTooltip = false) {
 }
 
     
-
 function openMapOverlay() {
-        if (!mapOverlay) return;
-        mapOverlay.classList.add('is-visible');
-        document.body.style.overflow = 'hidden';
-        if (!isMapInitialized) {
-            initMap();
-            handleSearchArea();
-        }
-    }
+log("Kaart overlay wordt geopend, start kaartlogica...");
+    document.body.style.overflow = 'hidden';
 
-    function closeMapOverlay() {
-        if (!mapOverlay) return;
-        mapOverlay.classList.remove('is-visible');
-        document.body.style.overflow = '';
+    if (!isMapInitialized) {
+        initMap(); // Initialiseer de kaart
+        handleSearchArea(); // Voer de eerste zoekopdracht uit
+    } else {
+        // Zorg ervoor dat de kaart de juiste grootte heeft als hij opnieuw wordt geopend.
+        setTimeout(() => map.invalidateSize(), 50);
     }
+}
+
+function closeMapOverlay() {
+    log("Kaart overlay sluiten...");
+    document.body.style.overflow = ''; // Sta scrollen weer toe
+}
+
 
 async function fetchRestaurantsForMap(params = {}) {
         if (!xanoAuthToken) xanoAuthToken = await getAuthToken();
@@ -1167,76 +1169,59 @@ async function fetchAndDisplayMainList() {
 async function initializeSite() {
     log("Site initialisatie gestart.");
 
-    // --- STAP 1: KOPPEL ALLE DOM ELEMENTEN ---
-    // Dit moet als eerste gebeuren, zodat alle variabelen bestaan.
+    // STAP 1: Koppel alle DOM elementen
     log("DOM elementen koppelen...");
+    // Hoofdlijst & Standaard Filters
     restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
     templateItemEl = document.querySelector(templateItemSelector);
-    mainSliderTemplateNodeGlobal = document.querySelector(mainSliderTemplateSelector);
     searchInputEl = document.querySelector(searchInputSelector);
     resultsCountTextEl = document.querySelector(resultsCountTextSelector);
     paginationPrevEl = document.querySelector(paginationPrevButtonSelector);
     paginationNextEl = document.querySelector(paginationNextButtonSelector);
     paginationNumbersContainerEl = document.querySelector(paginationNumbersContainerSelector);
-    finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector);
-    finsweetLoaderEl = document.querySelector(finsweetLoaderSelector);
-    clearAllButtonEl = document.querySelector(clearAllButtonSelector);
     applyFiltersButtonEl = document.querySelector(applyFiltersButtonSelector);
+    clearAllButtonEl = document.querySelector(clearAllButtonSelector);
     openFiltersButtonEl = document.querySelector(openFiltersButtonSelector);
     closeFiltersButtonEl = document.querySelector(closeFiltersButtonSelector);
-    filtersPanelEl = document.querySelector('#filters-panel'); // Specifieke ID voor hoofdlijst-paneel
+    filtersPanelEl = document.querySelector('#filters-panel');
     
-    showMapButton = document.querySelector(showMapButtonSelector);
-    mapOverlay = document.querySelector(mapOverlaySelector);
-    closeMapButton = document.querySelector(closeMapButtonSelector);
-    mapContainer = document.querySelector(mapElementSelector);
+    // Kaart Overlay Elementen
+    mapContainer = document.querySelector(mapContainerSelector);
     mapListContainer = document.querySelector(mapListContainerSelector);
     searchAreaButton = document.querySelector(searchAreaButtonSelector);
     filtersToggleButton = document.querySelector(filtersToggleButtonSelector);
-    filterPanel = document.querySelector(filterPanelSelector); // Let op: kan conflict geven, zie HTML
-
-    if (!restaurantListWrapperEl || !templateItemEl) {
-        console.error("Kritische elementen voor de hoofdlijst niet gevonden! Stoppen.");
-        return;
-    }
+    filterPanel = document.querySelector('#map-view-filter-panel');
     
+    // De knoppen die door de interaction worden beheerd
+    const showMapButton = document.querySelector(showMapButtonSelector);
+    const closeMapButton = document.querySelector(closeMapButtonSelector);
+
+    if (!restaurantListWrapperEl) return console.error("Hoofdlijst wrapper niet gevonden!");
     if (templateItemEl) templateItemEl.style.display = 'none';
-    if (mainSliderTemplateNodeGlobal) mainSliderTemplateNodeGlobal.style.display = 'none';
 
-    // --- STAP 2: AUTHENTICATIE ---
-    // Nu we de DOM elementen hebben, kunnen we de lader tonen en veilig authenticeren.
+    // STAP 2: AUTHENTICATIE & DATA LADEN
     try {
-        if(finsweetLoaderEl) finsweetLoaderEl.style.display = 'block';
-        await getAuthToken();
-        log("Authenticatie succesvol.");
-
-     const fetchWasTriggeredByUrl = applyFiltersFromURL();
-    if (!fetchWasTriggeredByUrl) {
-        log("Geen URL-filters, start de standaard fetch voor de hoofdlijst.");
-        await fetchAndDisplayMainList();
-    }
-	    
+        if(document.querySelector('[fs-cmsload-element="loader"]')) {
+            document.querySelector('[fs-cmsload-element="loader"]').style.display = 'block';
+        }
+        await getAuthToken(); // Wacht tot het token er is
+        await fetchAllSliderDataOnce(); // Wacht tot slider data er is
+        await fetchAndDisplayMainList(); // Wacht tot de hoofdlijst is geladen
     } catch (error) {
-        console.error("KRITISCHE FOUT: Authenticatie mislukt. Script stopt.", error);
-        if(finsweetLoaderEl) finsweetLoaderEl.style.display = 'none';
-        return;
+        console.error("Fout tijdens initialisatie:", error);
+    } finally {
+        if(document.querySelector('[fs-cmsload-element="loader"]')) {
+            document.querySelector('[fs-cmsload-element="loader"]').style.display = 'none';
+        }
     }
 
-    // --- STAP 3: EVENT LISTENERS KOPPELEN ---
-    log("Event listeners koppelen via event delegation...");
+    // STAP 3: EVENT LISTENERS KOPPELEN (NU VEEL SIMPELER)
+    log("Event listeners koppelen...");
 
-document.body.addEventListener('click', function(e) {
-    const target = e.target;
-
-    // --- Listeners voor de Kaart Overlay ---
-    if (target.closest(showMapButtonSelector)) {
-        e.preventDefault();
-        openMapOverlay();
-    }
-    if (target.closest(closeMapButtonSelector)) {
-        e.preventDefault();
-        closeMapOverlay();
-    }
+    // Luister naar de knoppen die de Webflow Interactions triggeren
+    if (showMapButton) showMapButton.addEventListener('click', openMapOverlay);
+    if (closeMapButton) closeMapButton.addEventListener('click', closeMapOverlay);
+	
     if (target.closest(searchAreaButtonSelector)) {
         e.preventDefault();
         handleSearchArea();
