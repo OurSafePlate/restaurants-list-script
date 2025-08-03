@@ -130,30 +130,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 async function getAuthToken() {
-    if (xanoAuthToken) return xanoAuthToken; // Geef token terug als we het al hebben
+    // Als we al een geldig token hebben, gebruik dat dan.
+    if (xanoAuthToken) return xanoAuthToken;
+    
     log("Authenticatie token ophalen...");
     try {
         const response = await fetch(API_AUTH_LOGIN, { method: 'POST' });
         if (!response.ok) {
             throw new Error(`Authenticatie serverfout: ${response.status}`);
         }
-        // De response is de token zelf, lees het als tekst.
-        const token = await response.text(); 
-        
-        if (token && token.startsWith('ey')) { // Een simpele check of het op een token lijkt
-            xanoAuthToken = token;
-            log("Authenticatie succesvol, token ontvangen.");
-            return xanoAuthToken;
-        } else {
-            throw new Error("Ongeldige token ontvangen van de auth API.");
+
+        // Lees de response eerst als ruwe tekst, zonder aannames.
+        const rawResponse = await response.text();
+
+        // POGING 1: Probeer de tekst te parsen als een JSON object.
+        try {
+            const jsonData = JSON.parse(rawResponse);
+            // Als het een object is en de sleutel 'authToken' bevat, hebben we ons token.
+            if (jsonData && jsonData.authToken) {
+                xanoAuthToken = jsonData.authToken;
+                log("Authenticatie succesvol (via JSON object).");
+                return xanoAuthToken;
+            }
+        } catch (e) {
+            // Het was geen JSON. Dit is geen fout, we gaan door naar poging 2.
+            log("Auth response was geen JSON, probeer als ruwe tekst.");
         }
+
+        // POGING 2: Als het geen JSON was, controleer of de ruwe tekst zelf het token is.
+        if (rawResponse && typeof rawResponse === 'string' && rawResponse.startsWith('ey')) {
+            xanoAuthToken = rawResponse;
+            log("Authenticatie succesvol (via ruwe tekst).");
+            return xanoAuthToken;
+        }
+
+        // Als beide pogingen mislukken, is de response ongeldig.
+        throw new Error("Ongeldig of onbekend formaat token ontvangen van de auth API.");
 
     } catch (error) {
         console.error("KRITISCHE FOUT: Authenticatie mislukt.", error);
-        throw error;
+        throw error; // Gooi de fout door zodat het script stopt.
     }
 }
-
+	
 // --- NIEUWE FUNCTIE: FILTERS UIT URL LEZEN EN TOEPASSEN ---
 function applyFiltersFromURL() {
     log("applyFiltersFromURL: Functie gestart. Controleren op URL-parameters...");
