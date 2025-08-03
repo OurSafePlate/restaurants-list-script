@@ -1186,7 +1186,7 @@ async function initializeSite() {
     filtersPanelEl = document.querySelector('#filters-panel');
     
     // Kaart Overlay Elementen
-    mapContainer = document.querySelector(mapContainerSelector);
+    mapContainer = document.querySelector(mapElementSelector);
     mapListContainer = document.querySelector(mapListContainerSelector);
     searchAreaButton = document.querySelector(searchAreaButtonSelector);
     filtersToggleButton = document.querySelector(filtersToggleButtonSelector);
