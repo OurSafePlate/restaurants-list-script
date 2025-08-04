@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
    let restaurantListWrapperEl, templateItemEl, mainSliderTemplateNodeGlobal, searchInputEl,
         resultsCountTextEl, paginationPrevEl, paginationNextEl, paginationNumbersContainerEl,
         applyFiltersButtonEl, clearAllButtonEl, showMapButton, mapOverlay, closeMapButton,
-        mapContainer, mapListContainer, searchAreaButton, filtersToggleButton, filterPanel;
+        mapContainer, mapListContainer, searchAreaButton, filtersToggleButton, filterPanel, finsweetLoaderEl, finsweetEmptyStateEl;
 
   // --- LOG FUNCTIE ---
   function log(...args) {
@@ -1173,6 +1173,7 @@ async function initializeSite() {
     log("DOM elementen koppelen...");
     restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
     templateItemEl = document.querySelector(templateItemSelector);
+    mainSliderTemplateNodeGlobal = document.querySelector(mainSliderTemplateSelector);
     searchInputEl = document.querySelector(searchInputSelector);
     resultsCountTextEl = document.querySelector(resultsCountTextSelector);
     paginationPrevEl = document.querySelector(paginationPrevButtonSelector);
@@ -1186,6 +1187,8 @@ async function initializeSite() {
     mapOverlay = document.querySelector(mapOverlaySelector);
     mapContainer = document.querySelector(mapElementSelector);
     mapListContainer = document.querySelector(mapListContainerSelector);
+    finsweetLoaderEl = document.querySelector(finsweetLoaderSelector);
+    finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector); 
     
     if (!restaurantListWrapperEl) return console.error("Hoofdlijst wrapper niet gevonden!");
     if (templateItemEl) templateItemEl.style.display = 'none';
