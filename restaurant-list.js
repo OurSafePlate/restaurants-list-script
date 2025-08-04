@@ -562,8 +562,14 @@ function createMarker(restaurant) {
 
     // Custom icoon zoals TripAdvisor
     const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
+    
+    // --- HIER IS DE FIX ---
+    // Vervang de placeholder URL met een echte URL uit je Webflow assets.
+    // Ik gebruik hier als voorbeeld het "ei-icoon". Upload je eigen vleugel-icoon en vervang de URL.
+    const iconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0af5f0966589c0bc75a_ei.png"; 
+
     const customIcon = L.divIcon({
-        html: `<div class="map-marker-custom"><img src="URL_NAAR_VLEUGEL_ICOON.svg" class="map-marker-icon"><span class="map-marker-rating">${ratingText}</span></div>`,
+        html: `<div class="map-marker-custom"><img src="${iconUrl}" class="map-marker-icon"><span class="map-marker-rating">${ratingText}</span></div>`,
         className: 'custom-div-icon', // Belangrijk voor styling
         iconSize: [40, 40],
         iconAnchor: [20, 40]
@@ -575,7 +581,7 @@ function createMarker(restaurant) {
     marker.on('click', () => handleMarkerClick(restaurant.id));
     markers[restaurant.id] = marker;
 }
-
+	
 async function handleSearchArea() {
         if (!map) return;
         if(searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
