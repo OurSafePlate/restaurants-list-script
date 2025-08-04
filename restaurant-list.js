@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mapOverlaySelector = '#map-overlay-wrapper';
   const closeMapButtonSelector = '#map-overlay-close-button';
   const mapListContainerSelector = '#map-view-list';
+  const mapListTemplateSelector = '.is-map-list-template';
   const filtersToggleButtonSelector = '#map-view-filters-button';
   const filterPanelSelector = '#map-view-filter-panel';
 
@@ -656,39 +657,40 @@ async function fetchRestaurantsForMap(params = {}) {
         return response.json();
     }
 
+
 function displayDataOnMap(restaurants) {
-        // Leegmaken
-        if (mapListContainer) mapListContainer.innerHTML = '';
-        Object.values(markers).forEach(marker => map.removeLayer(marker));
-        markers = {};
+    // Leegmaken
+    if (mapListContainer) mapListContainer.innerHTML = '';
+    Object.values(markers).forEach(marker => map.removeLayer(marker));
+    markers = {};
 
-        const template = document.querySelector(mapListTemplateSelector);
-        if (!template) return;
+    const template = document.querySelector(mapListTemplateSelector);
+    if (!template) {
+        log("Fout: De template voor de kaartlijst (.is-map-list-template) is niet gevonden.");
+        return;
+    }
 
-        restaurants.forEach(restaurant => {
-            // Maak marker
-            const lat = restaurant.restaurant_latitude;
-            const lon = restaurant.restaurant_longitude;
-            if (lat && lon && map) {
-                const marker = L.marker([lat, lon], { 
-                    icon: createCustomMarkerIcon(restaurant.allergy_rating)
-                }).addTo(map);
-                marker.bindTooltip(restaurant.Name);
-                marker.on('click', () => handleMarkerClick(restaurant.id));
-                markers[restaurant.id] = marker;
-            }
+    restaurants.forEach(restaurant => {
+        // Maak marker - GEFIXT: createMarker() wordt nu aangeroepen
+        createMarker(restaurant);
 
-            // Maak lijst item
-            const newItem = template.cloneNode(true);
-            // Je bestaande render-logica kan hier worden hergebruikt
-            newItem.querySelector('.restaurants_title').textContent = restaurant.Name;
-            // ... vul de rest van de velden in (adres, keuken, rating, etc.)...
-            
-            newItem.dataset.restaurantId = restaurant.id;
-            newItem.addEventListener('click', () => handleListItemClick(restaurant.id));
-            if (mapListContainer) mapListContainer.appendChild(newItem);
-        });
-    }	
+        // Maak lijst item
+        const newItem = template.cloneNode(true);
+        newItem.classList.remove('is-map-list-template'); // Verwijder de template class
+        newItem.style.display = ''; // Maak het item zichtbaar
+
+        // Vul de data in met je renderRestaurantItem functie voor consistentie
+        const populatedItemContent = renderRestaurantItem(restaurant, false);
+        if (populatedItemContent) {
+            // Vervang de inhoud van de gekloonde template met de zojuist gevulde inhoud
+            newItem.innerHTML = populatedItemContent.innerHTML;
+        }
+
+        newItem.dataset.restaurantId = restaurant.id;
+        newItem.addEventListener('click', () => handleListItemClick(restaurant.id));
+        if (mapListContainer) mapListContainer.appendChild(newItem);
+    });
+}
 	
 // --- FUNCTIE OM PAGINANUMMERS TE RENDEREN ---
 function renderPageNumbers() {
