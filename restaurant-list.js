@@ -583,22 +583,21 @@ function createMarker(restaurant) {
 }
 	
 async function handleSearchArea() {
-        if (!map) return;
-        if(searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
-    
-        const bounds = map.getBounds();
-        const params = new URLSearchParams({
-            sw_lat: bounds.getSouthWest().lat, sw_lng: bounds.getSouthWest().lng,
-            ne_lat: bounds.getNorthEast().lat, ne_lng: bounds.getNorthEast().lng,
-            // Je kunt hier ook user_lat/lng meesturen als je API dat ondersteunt voor sorteren
-        });
-    
-        try {
-            const result = await fetchDataWithRetry(`${API_RESTAURANTS_LIST}?${params.toString()}`);
-            currentMapRestaurants = result.items || result;
-            displayDataOnMap(currentMapRestaurants);
-        } catch (error) { console.error("Fout bij zoeken in gebied:", error); }
-    }
+    if (!map) return;
+    if(searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
+
+    const bounds = map.getBounds();
+    const params = new URLSearchParams({
+        sw_lat: bounds.getSouthWest().lat, sw_lng: bounds.getSouthWest().lng,
+        ne_lat: bounds.getNorthEast().lat, ne_lng: bounds.getNorthEast().lng,
+    });
+
+    try {
+        const result = await fetchDataWithRetry(`${API_RESTAURANTS_LIST}?${params.toString()}`, {});
+        currentMapRestaurants = result.items || result;
+        displayDataOnMap(currentMapRestaurants);
+    } catch (error) { console.error("Fout bij zoeken in gebied:", error); }
+}
 	
 function handleMarkerClick(id) {
     const listItem = document.querySelector(`#map-view-list [data-restaurant-id='${id}']`);
