@@ -542,16 +542,30 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
 }
 
 function initMap() {
-        if (isMapInitialized || !mapContainer) return;
-        log("Kaart initialiseren...");
-        map = L.map(mapContainer).setView([51.985, 5.913], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap © CARTO', maxZoom: 20
-        }).addTo(map);
-        isMapInitialized = true;
-        map.on('moveend', () => { if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block'; });
-        setTimeout(() => map.invalidateSize(), 400);
-    }
+    if (isMapInitialized || !mapContainer) return;
+    log("Kaart initialiseren...");
+    
+    map = L.map(mapContainer).setView([51.985, 5.913], 13);
+    
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CARTO', maxZoom: 20
+    }).addTo(map);
+    
+    // Wacht tot de kaart volledig geladen is (inclusief de eerste set tiles)
+    // voordat we de eerste zoekopdracht uitvoeren. 'once' zorgt ervoor dat dit maar 1x gebeurt.
+    map.once('load', () => {
+        log("Kaart 'load' event getriggerd. Eerste zoekopdracht wordt nu uitgevoerd.");
+        handleSearchArea(); 
+    });
+
+    isMapInitialized = true;
+    map.on('moveend', () => { 
+        if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block'; 
+    });
+    
+    // De invalidateSize timeout is nog steeds een goed idee om rendering-glitches te voorkomen.
+    setTimeout(() => map.invalidateSize(), 400); 
+}
 
 function createMarker(restaurant) {
     // We gebruiken nu de aparte lat/lng velden uit je database
@@ -631,12 +645,13 @@ function highlightSelection(id, openTooltip = false) {
 
     
 function openMapOverlay() {
-log("Kaart overlay wordt geopend, start kaartlogica...");
+    log("Kaart overlay wordt geopend, start kaartlogica...");
     document.body.style.overflow = 'hidden';
 
     if (!isMapInitialized) {
-        initMap(); // Initialiseer de kaart
-        handleSearchArea(); // Voer de eerste zoekopdracht uit
+        // We roepen alleen initMap() aan. 
+        // De functie handelt nu zelf de eerste 'handleSearchArea' call af via het 'load' event.
+        initMap(); 
     } else {
         // Zorg ervoor dat de kaart de juiste grootte heeft als hij opnieuw wordt geopend.
         setTimeout(() => map.invalidateSize(), 50);
