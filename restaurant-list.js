@@ -1292,7 +1292,8 @@ async function initializeSite() {
     mapContainer = document.querySelector(mapElementSelector);
     mapListContainer = document.querySelector(mapListContainerSelector);
     finsweetLoaderEl = document.querySelector(finsweetLoaderSelector);
-    finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector); 
+    finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector);
+    searchAreaButton = document.querySelector(searchAreaButtonSelector);
     
     if (!restaurantListWrapperEl) return console.error("Hoofdlijst wrapper niet gevonden!");
     if (templateItemEl) templateItemEl.style.display = 'none';
