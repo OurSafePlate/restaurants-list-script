@@ -544,33 +544,48 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
 function initMap() {
     if (isMapInitialized || !mapContainer) return;
     log("Kaart initialiseren...");
-    
-    map = L.map(mapContainer).setView([51.985, 5.913], 13);
-    
+
+    // 1. Maak de kaart aan
+    map = L.map(mapElementSelector).setView([51.985, 5.913], 13);
+
+    // 2. Voeg de kaarttegels toe
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap © CARTO', maxZoom: 20
     }).addTo(map);
-    
-    map.once('load', () => {
-        log("Kaart 'load' event getriggerd. Eerste zoekopdracht wordt nu uitgevoerd.");
-        handleSearchArea(); 
-    });
 
     isMapInitialized = true;
-    map.on('moveend', () => { 
-        if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block'; 
-    });
-    
-    // Essentieel: forceer een redraw nadat de kaart is toegevoegd aan de DOM.
+
+    // 3. Wacht een fractie van een seconde en FORCEER dan een redraw.
+    // Dit geeft de DOM de tijd om de kaart-div te renderen.
     setTimeout(() => {
         if (map) {
-             map.invalidateSize();
+            log("Forceer map.invalidateSize() om rendering te garanderen.");
+            map.invalidateSize();
+
+            // 4. NU PAS, nadat de kaart gegarandeerd de juiste grootte heeft,
+            // stellen we de eenmalige listener in om de data op te halen.
+            log("'load' event listener wordt nu ingesteld.");
+            map.once('load', () => {
+                log("✅ Kaart 'load' event succesvol getriggerd. Start data-ophaling.");
+                handleSearchArea();
+            });
+
+            // 5. Vuur handmatig een 'load' event af als de kaart al geladen is.
+            // Dit is een vangnet voor het geval dat het 'load' event al voorbij was.
+            if (map._loaded) {
+                log("Kaart was al geladen, trigger 'load' handmatig.");
+                map.fire('load');
+            }
         }
-    }, 10); // Een hele korte timeout is hier al genoeg.
+    }, 150); // 150ms is een veilige marge.
+
+    // De 'moveend' listener blijft zoals hij is.
+    map.on('moveend', () => {
+        if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block';
+    });
 }
 
 function createMarker(restaurant) {
-    // --- DE FIX: Gebruik het geo_location object ---
     const lat = restaurant.geo_location?.data?.lat;
     const lon = restaurant.geo_location?.data?.lng;
 
