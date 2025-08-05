@@ -570,23 +570,22 @@ function initMap() {
 }
 
 function createMarker(restaurant) {
-    // We gebruiken nu de aparte lat/lng velden uit je database
-    const lat = restaurant.restaurant_latitude;
-    const lon = restaurant.restaurant_longitude;
+    // --- DE FIX: Gebruik het geo_location object ---
+    const lat = restaurant.geo_location?.data?.lat;
+    const lon = restaurant.geo_location?.data?.lng;
 
-    if (!lat || !lon || !map) return;
+    // Deze check is nu nog belangrijker
+    if (!lat || !lon || !map) {
+        log(`Kan marker niet aanmaken voor ${restaurant.Name}: geen geldige coördinaten.`);
+        return;
+    }
 
-    // Custom icoon zoals TripAdvisor
     const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
-    
-    // --- HIER IS DE FIX ---
-    // Vervang de placeholder URL met een echte URL uit je Webflow assets.
-    // Ik gebruik hier als voorbeeld het "ei-icoon". Upload je eigen vleugel-icoon en vervang de URL.
     const iconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0af5f0966589c0bc75a_ei.png"; 
 
     const customIcon = L.divIcon({
         html: `<div class="map-marker-custom"><img src="${iconUrl}" class="map-marker-icon"><span class="map-marker-rating">${ratingText}</span></div>`,
-        className: 'custom-div-icon', // Belangrijk voor styling
+        className: 'custom-div-icon',
         iconSize: [40, 40],
         iconAnchor: [20, 40]
     });
@@ -625,8 +624,9 @@ function handleMarkerClick(id) {
 
 function handleListItemClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
-    if (restaurant && map) {
-        map.flyTo([restaurant.restaurant_latitude, restaurant.restaurant_longitude], 16);
+
+    if (restaurant && restaurant.geo_location?.data && map) {
+        map.flyTo([restaurant.geo_location.data.lat, restaurant.geo_location.data.lng], 16);
         highlightSelection(id, false);
     }
 }
