@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const parentComponentSelector = '.layout192_component';
   const showMapButtonSelector = '#show-map-button';
-  const mapElementSelector = '#map-container';
+  const mapElementSelector = '#map';
   const locateMeButtonSelector = '#locate-me-button';
   const searchAreaButtonSelector = '#map-search-area-button';
 
