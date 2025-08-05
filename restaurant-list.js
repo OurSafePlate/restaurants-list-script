@@ -545,41 +545,13 @@ function initMap() {
     if (isMapInitialized || !mapContainer) return;
     log("Kaart initialiseren...");
 
-    // 1. Maak de kaart aan
-    map = L.map(mapElementSelector).setView([51.985, 5.913], 13);
-
-    // 2. Voeg de kaarttegels toe
+    map = L.map(mapElementSelector).setView(INITIAL_COORDS, INITIAL_ZOOM);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap © CARTO', maxZoom: 20
     }).addTo(map);
 
     isMapInitialized = true;
 
-    // 3. Wacht een fractie van een seconde en FORCEER dan een redraw.
-    // Dit geeft de DOM de tijd om de kaart-div te renderen.
-    setTimeout(() => {
-        if (map) {
-            log("Forceer map.invalidateSize() om rendering te garanderen.");
-            map.invalidateSize();
-
-            // 4. NU PAS, nadat de kaart gegarandeerd de juiste grootte heeft,
-            // stellen we de eenmalige listener in om de data op te halen.
-            log("'load' event listener wordt nu ingesteld.");
-            map.once('load', () => {
-                log("✅ Kaart 'load' event succesvol getriggerd. Start data-ophaling.");
-                handleSearchArea();
-            });
-
-            // 5. Vuur handmatig een 'load' event af als de kaart al geladen is.
-            // Dit is een vangnet voor het geval dat het 'load' event al voorbij was.
-            if (map._loaded) {
-                log("Kaart was al geladen, trigger 'load' handmatig.");
-                map.fire('load');
-            }
-        }
-    }, 150); // 150ms is een veilige marge.
-
-    // De 'moveend' listener blijft zoals hij is.
     map.on('moveend', () => {
         if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block';
     });
@@ -589,14 +561,10 @@ function createMarker(restaurant) {
     const lat = restaurant.geo_location?.data?.lat;
     const lon = restaurant.geo_location?.data?.lng;
 
-    // Deze check is nu nog belangrijker
-    if (!lat || !lon || !map) {
-        log(`Kan marker niet aanmaken voor ${restaurant.Name}: geen geldige coördinaten.`);
-        return;
-    }
+    if (!lat || !lon || !map) return;
 
     const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
-    const iconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0af5f0966589c0bc75a_ei.png"; 
+    const iconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0af5f0966589c0bc75a_ei.png";
 
     const customIcon = L.divIcon({
         html: `<div class="map-marker-custom"><img src="${iconUrl}" class="map-marker-icon"><span class="map-marker-rating">${ratingText}</span></div>`,
@@ -606,7 +574,6 @@ function createMarker(restaurant) {
     });
 
     const marker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
-
     marker.bindTooltip(restaurant.Name);
     marker.on('click', () => handleMarkerClick(restaurant.id));
     markers[restaurant.id] = marker;
@@ -614,23 +581,35 @@ function createMarker(restaurant) {
 	
 async function handleSearchArea() {
     if (!map) return;
-    if(searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
+    log("handleSearchArea: Zoekopdracht wordt uitgevoerd.");
+    if (searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
 
     const bounds = map.getBounds();
+    // Validatie: Zorg ervoor dat we geen '0x0' gebied opvragen
+    if (bounds.getSouthWest().equals(bounds.getNorthEast())) {
+        log("Waarschuwing: Kaartgrenzen zijn identiek. Zoekopdracht wordt uitgesteld.");
+        return;
+    }
+
     const params = new URLSearchParams({
-        sw_lat: bounds.getSouthWest().lat, sw_lng: bounds.getSouthWest().lng,
-        ne_lat: bounds.getNorthEast().lat, ne_lng: bounds.getNorthEast().lng,
+        sw_lat: bounds.getSouthWest().lat,
+        sw_lng: bounds.getSouthWest().lng,
+        ne_lat: bounds.getNorthEast().lat,
+        ne_lng: bounds.getNorthEast().lng,
     });
 
     try {
         const result = await fetchDataWithRetry(`${API_RESTAURANTS_LIST}?${params.toString()}`, {});
-        currentMapRestaurants = result.items || result;
+        currentMapRestaurants = result.items || [];
         displayDataOnMap(currentMapRestaurants);
-    } catch (error) { console.error("Fout bij zoeken in gebied:", error); }
+    } catch (error) {
+        console.error("Fout bij zoeken in gebied:", error);
+    }
 }
 	
 function handleMarkerClick(id) {
-    const listItem = document.querySelector(`#map-view-list [data-restaurant-id='${id}']`);
+    if (!mapListContainer) return;
+    const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
     if (listItem) {
         listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
         highlightSelection(id, true);
@@ -639,7 +618,6 @@ function handleMarkerClick(id) {
 
 function handleListItemClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
-
     if (restaurant && restaurant.geo_location?.data && map) {
         map.flyTo([restaurant.geo_location.data.lat, restaurant.geo_location.data.lng], 16);
         highlightSelection(id, false);
@@ -647,11 +625,12 @@ function handleListItemClick(id) {
 }
 
 function highlightSelection(id, openTooltip = false) {
-    document.querySelectorAll('#map-view-list .restaurants_item-component').forEach(card => card.classList.remove('is-map-highlighted'));
-    const listItem = document.querySelector(`#map-view-list [data-restaurant-id='${id}']`);
+    if (!mapListContainer) return;
+    mapListContainer.querySelectorAll('.restaurants_item-component').forEach(card => card.classList.remove('is-map-highlighted'));
+    
+    const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
     if (listItem) listItem.classList.add('is-map-highlighted');
 
-    // Visuele feedback op de kaart
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
     const marker = markers[id];
     if (marker) {
@@ -662,33 +641,35 @@ function highlightSelection(id, openTooltip = false) {
 
     
 function openMapOverlay() {
-    log("Kaart overlay wordt geopend, start kaartlogica...");
+    log("Kaart overlay wordt geopend...");
     if (!mapOverlay) {
-        console.error("Fout: Kan het kaart-overlay element (#map-overlay) niet vinden in de DOM.");
+        console.error("Fout: Kan het kaart-overlay element (#map-overlay) niet vinden.");
         return;
     }
 
-    // --- DE FIX: NEEM VOLLEDIGE CONTROLE ---
-    // 1. Maak de overlay direct zichtbaar.
-    mapOverlay.style.display = 'flex'; // 'flex' is vaak beter voor centering dan 'block'
+    // 1. Maak de overlay direct zichtbaar en geef het de controle
+    mapOverlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
-    // 2. Wacht een enkele 'tick' om de browser de display-wijziging te laten verwerken.
-    // Dit is een robuustere manier dan een vaste timeout.
+    // Wacht tot de browser de 'display' wijziging heeft verwerkt
     requestAnimationFrame(() => {
         mapOverlay.style.opacity = '1';
 
-        // 3. Initialiseer de kaart als dat nodig is.
+        // 2. Initialiseer de kaart NU PAS
         if (!isMapInitialized) {
             initMap();
-        } else {
-            // Als de kaart al bestaat, zorg dan dat hij zichzelf opnieuw tekent.
-            // Dit is cruciaal voor als de gebruiker de overlay sluit en opnieuw opent.
-            if (map) {
-                log("Kaart bestond al. Roep invalidateSize() aan.");
-                map.invalidateSize();
-            }
         }
+
+        // 3. De MEEST BELANGRIJKE STAP:
+        // Wacht tot de CSS fade-in animatie klaar is (400ms is een veilige gok voor Webflow)
+        // en FORCEER dan de redraw en de data-ophaling.
+        setTimeout(() => {
+            if (map) {
+                log("Animatie voltooid. Forceer redraw en haal data op.");
+                map.invalidateSize(); // Zeg tegen de kaart: "Kijk naar je nieuwe grootte!"
+                handleSearchArea();   // Zeg tegen de app: "Haal nu de data op!"
+            }
+        }, 400); 
     });
 }
 
@@ -696,15 +677,13 @@ function closeMapOverlay() {
     log("Kaart overlay sluiten...");
     if (!mapOverlay) return;
 
-    // Start de fade-out animatie
     mapOverlay.style.opacity = '0';
-    document.body.style.overflow = ''; 
-
-    // Wacht tot de CSS transitie (animatie) klaar is voordat we de div verbergen.
-    // De standaard duur van Webflow is vaak rond de 300-400ms. We nemen 500ms voor de zekerheid.
+    document.body.style.overflow = '';
+    
+    // Wacht tot de animatie klaar is voordat we het element verbergen
     setTimeout(() => {
         mapOverlay.style.display = 'none';
-    }, 500); 
+    }, 500);
 }
 
 
