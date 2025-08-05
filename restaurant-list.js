@@ -647,27 +647,30 @@ function highlightSelection(id, openTooltip = false) {
 function openMapOverlay() {
     log("Kaart overlay wordt geopend, start kaartlogica...");
     
-    // 1. Maak de overlay direct zichtbaar in de DOM
-    // De Webflow interactie kan de opacity animeren, maar voor het script moet hij bestaan.
-    if (mapOverlay) {
-        mapOverlay.style.display = 'block'; 
-        mapOverlay.style.opacity = '1'; // Forceer zichtbaarheid
+    if (!mapOverlay) {
+        console.error("Fout: Kaart overlay element (#map-overlay) niet gevonden.");
+        return;
     }
 
+    // Stap 1: Forceer de overlay om direct zichtbaar te zijn via CSS,
+    // onafhankelijk van eventuele Webflow IX2 animaties.
+    mapOverlay.style.display = 'block';
+    mapOverlay.style.opacity = '1';
     document.body.style.overflow = 'hidden';
 
-    // 2. Initialiseer de kaart als dat nog niet is gebeurd
+    // Stap 2: Initialiseer de kaart NU PAS, nu de container gegarandeerd zichtbaar is.
     if (!isMapInitialized) {
-        initMap(); 
+        initMap();
     }
-
-    // 3. Forceer ALTIJD een re-calculatie van de kaartgrootte
+    
+    // Stap 3: Geef Leaflet een extra duwtje om zeker te zijn.
+    // Dit zorgt ervoor dat de kaart zichzelf correct rendert.
     setTimeout(() => {
         if (map) {
             log("map.invalidateSize() wordt aangeroepen om de kaart te hertekenen.");
             map.invalidateSize();
         }
-    }, 150); // Een kleine vertraging van 150ms is meestal genoeg.
+    }, 100); // Een kortere timeout is nu voldoende.
 }
 
 function closeMapOverlay() {
