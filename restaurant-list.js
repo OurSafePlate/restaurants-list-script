@@ -551,8 +551,6 @@ function initMap() {
         attribution: '© OpenStreetMap © CARTO', maxZoom: 20
     }).addTo(map);
     
-    // Wacht tot de kaart volledig geladen is (inclusief de eerste set tiles)
-    // voordat we de eerste zoekopdracht uitvoeren. 'once' zorgt ervoor dat dit maar 1x gebeurt.
     map.once('load', () => {
         log("Kaart 'load' event getriggerd. Eerste zoekopdracht wordt nu uitgevoerd.");
         handleSearchArea(); 
@@ -563,8 +561,12 @@ function initMap() {
         if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block'; 
     });
     
-    // De invalidateSize timeout is nog steeds een goed idee om rendering-glitches te voorkomen.
-    setTimeout(() => map.invalidateSize(), 400); 
+    // Essentieel: forceer een redraw nadat de kaart is toegevoegd aan de DOM.
+    setTimeout(() => {
+        if (map) {
+             map.invalidateSize();
+        }
+    }, 10); // Een hele korte timeout is hier al genoeg.
 }
 
 function createMarker(restaurant) {
@@ -646,36 +648,48 @@ function highlightSelection(id, openTooltip = false) {
     
 function openMapOverlay() {
     log("Kaart overlay wordt geopend, start kaartlogica...");
-    
     if (!mapOverlay) {
-        console.error("Fout: Kaart overlay element (#map-overlay) niet gevonden.");
+        console.error("Fout: Kan het kaart-overlay element (#map-overlay) niet vinden in de DOM.");
         return;
     }
 
-    // Stap 1: Forceer de overlay om direct zichtbaar te zijn via CSS,
-    // onafhankelijk van eventuele Webflow IX2 animaties.
-    mapOverlay.style.display = 'block';
-    mapOverlay.style.opacity = '1';
+    // --- DE FIX: NEEM VOLLEDIGE CONTROLE ---
+    // 1. Maak de overlay direct zichtbaar.
+    mapOverlay.style.display = 'flex'; // 'flex' is vaak beter voor centering dan 'block'
     document.body.style.overflow = 'hidden';
 
-    // Stap 2: Initialiseer de kaart NU PAS, nu de container gegarandeerd zichtbaar is.
-    if (!isMapInitialized) {
-        initMap();
-    }
-    
-    // Stap 3: Geef Leaflet een extra duwtje om zeker te zijn.
-    // Dit zorgt ervoor dat de kaart zichzelf correct rendert.
-    setTimeout(() => {
-        if (map) {
-            log("map.invalidateSize() wordt aangeroepen om de kaart te hertekenen.");
-            map.invalidateSize();
+    // 2. Wacht een enkele 'tick' om de browser de display-wijziging te laten verwerken.
+    // Dit is een robuustere manier dan een vaste timeout.
+    requestAnimationFrame(() => {
+        mapOverlay.style.opacity = '1';
+
+        // 3. Initialiseer de kaart als dat nodig is.
+        if (!isMapInitialized) {
+            initMap();
+        } else {
+            // Als de kaart al bestaat, zorg dan dat hij zichzelf opnieuw tekent.
+            // Dit is cruciaal voor als de gebruiker de overlay sluit en opnieuw opent.
+            if (map) {
+                log("Kaart bestond al. Roep invalidateSize() aan.");
+                map.invalidateSize();
+            }
         }
-    }, 100); // Een kortere timeout is nu voldoende.
+    });
 }
 
 function closeMapOverlay() {
     log("Kaart overlay sluiten...");
-    document.body.style.overflow = ''; // Sta scrollen weer toe
+    if (!mapOverlay) return;
+
+    // Start de fade-out animatie
+    mapOverlay.style.opacity = '0';
+    document.body.style.overflow = ''; 
+
+    // Wacht tot de CSS transitie (animatie) klaar is voordat we de div verbergen.
+    // De standaard duur van Webflow is vaak rond de 300-400ms. We nemen 500ms voor de zekerheid.
+    setTimeout(() => {
+        mapOverlay.style.display = 'none';
+    }, 500); 
 }
 
 
