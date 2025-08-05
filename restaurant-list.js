@@ -542,19 +542,34 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
 }
 
 function initMap() {
-    if (isMapInitialized || !mapContainer) return;
-    log("Kaart initialiseren...");
+    if (isMapInitialized) return;
+    
+    const mapElement = document.querySelector(mapElementSelector);
+    if (!mapElement) {
+        console.error("FATALE FOUT: Kon de kaart-container '#map' niet vinden op het moment van initialisatie.");
+        return;
+    }
+    
+    log("Kaart initialiseren in:", mapElement);
+    isMapInitialized = true; // Zet de vlag direct om dubbele initialisatie te voorkomen.
 
-    map = L.map(mapElementSelector).setView(INITIAL_COORDS, INITIAL_ZOOM);
+    map = L.map(mapElement).setView(INITIAL_COORDS, INITIAL_ZOOM);
+    
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap © CARTO', maxZoom: 20
     }).addTo(map);
 
-    isMapInitialized = true;
-
     map.on('moveend', () => {
         if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block';
     });
+
+    // Wacht een ruime marge (nadat de kaarttegels beginnen te laden)
+    // om zeker te zijn dat de kaart volledig gerenderd is.
+    setTimeout(() => {
+        log("Forceer redraw en haal data op.");
+        map.invalidateSize();
+        handleSearchArea();
+    }, 400); // 400ms is een veilige, ruime marge.
 }
 
 function createMarker(restaurant) {
@@ -647,30 +662,24 @@ function openMapOverlay() {
         return;
     }
 
-    // 1. Maak de overlay direct zichtbaar en geef het de controle
+    // Maak de overlay zichtbaar. Dit triggert de CSS-transitie.
     mapOverlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-
-    // Wacht tot de browser de 'display' wijziging heeft verwerkt
-    requestAnimationFrame(() => {
+    
+    // Wacht een fractie van een seconde zodat de display-wijziging is verwerkt.
+    setTimeout(() => {
         mapOverlay.style.opacity = '1';
 
-        // 2. Initialiseer de kaart NU PAS
+        // Initialiseer de kaart NU PAS.
         if (!isMapInitialized) {
             initMap();
+        } else {
+            // Als de kaart al bestaat, forceer een redraw.
+            setTimeout(() => {
+                if (map) map.invalidateSize();
+            }, 100);
         }
-
-        // 3. De MEEST BELANGRIJKE STAP:
-        // Wacht tot de CSS fade-in animatie klaar is (400ms is een veilige gok voor Webflow)
-        // en FORCEER dan de redraw en de data-ophaling.
-        setTimeout(() => {
-            if (map) {
-                log("Animatie voltooid. Forceer redraw en haal data op.");
-                map.invalidateSize(); // Zeg tegen de kaart: "Kijk naar je nieuwe grootte!"
-                handleSearchArea();   // Zeg tegen de app: "Haal nu de data op!"
-            }
-        }, 400); 
-    });
+    }, 10); // Een minimale vertraging van 10ms is al genoeg.
 }
 
 function closeMapOverlay() {
