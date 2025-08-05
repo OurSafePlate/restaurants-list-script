@@ -24,12 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const locateMeButtonSelector = '#locate-me-button';
   const searchAreaButtonSelector = '#map-search-area-button';
 
-  const mapOverlaySelector = '#map-overlay-wrapper';
-  const closeMapButtonSelector = '#map-overlay-close-button';
-  const mapListContainerSelector = '#map-view-list';
+  const mapOverlaySelector = '#map-overlay';
+  const closeMapButtonSelector = '#map-close-button';
+  const mapListContainerSelector = '#map-restaurant-list';
   const mapListTemplateSelector = '.is-map-list-template';
-  const filtersToggleButtonSelector = '#map-view-filters-button';
-  const filterPanelSelector = '#map-view-filter-panel';
+  const filtersToggleButtonSelector = '#map-filters-toggle-button';
+  const filterPanelSelector = '#map-filter-form-content';
 
 
   // --- SELECTOREN ---
