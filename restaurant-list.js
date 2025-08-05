@@ -646,16 +646,28 @@ function highlightSelection(id, openTooltip = false) {
     
 function openMapOverlay() {
     log("Kaart overlay wordt geopend, start kaartlogica...");
+    
+    // 1. Maak de overlay direct zichtbaar in de DOM
+    // De Webflow interactie kan de opacity animeren, maar voor het script moet hij bestaan.
+    if (mapOverlay) {
+        mapOverlay.style.display = 'block'; 
+        mapOverlay.style.opacity = '1'; // Forceer zichtbaarheid
+    }
+
     document.body.style.overflow = 'hidden';
 
+    // 2. Initialiseer de kaart als dat nog niet is gebeurd
     if (!isMapInitialized) {
-        // We roepen alleen initMap() aan. 
-        // De functie handelt nu zelf de eerste 'handleSearchArea' call af via het 'load' event.
         initMap(); 
-    } else {
-        // Zorg ervoor dat de kaart de juiste grootte heeft als hij opnieuw wordt geopend.
-        setTimeout(() => map.invalidateSize(), 50);
     }
+
+    // 3. Forceer ALTIJD een re-calculatie van de kaartgrootte
+    setTimeout(() => {
+        if (map) {
+            log("map.invalidateSize() wordt aangeroepen om de kaart te hertekenen.");
+            map.invalidateSize();
+        }
+    }, 150); // Een kleine vertraging van 150ms is meestal genoeg.
 }
 
 function closeMapOverlay() {
