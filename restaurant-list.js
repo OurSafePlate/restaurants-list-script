@@ -577,18 +577,32 @@ function createMarker(restaurant) {
     const lon = restaurant.geo_location?.data?.lng;
 
     if (!lat || !lon || !map) return;
-
+    
+    // 1. Haal de allergy_rating op. Toon een '-' als deze niet bestaat.
     const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
-    const iconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0af5f0966589c0bc75a_ei.png";
 
+    // 2. Definieer de URL naar je vleugel-icoon.
+    // BELANGRIJK: Upload dit icoon naar Webflow Assets en plak hier de juiste URL.
+    const wingIconUrl = "https://uploads-ssl.webflow.com/6489a426913b063234a755a3/6489a426913b063234a755d6_Wing.svg"; // VERVANG DIT MET JE EIGEN ICOON URL
+
+    // 3. Bouw de HTML voor het custom icoon met de nieuwe CSS classes.
+    const customIconHtml = `
+        <div class="custom-map-marker">
+            <img src="${wingIconUrl}" class="map-marker-icon-img">
+            <span class="map-marker-rating-text">${ratingText}</span>
+        </div>
+    `;
+
+    // 4. Maak het Leaflet divIcon aan.
     const customIcon = L.divIcon({
-        html: `<div class="map-marker-custom"><img src="${iconUrl}" class="map-marker-icon"><span class="map-marker-rating">${ratingText}</span></div>`,
-        className: 'custom-div-icon',
-        iconSize: [40, 40],
-        iconAnchor: [20, 40]
+        html: customIconHtml,
+        className: '', // Belangrijk: laat dit leeg om conflicten te voorkomen. De styling zit in onze eigen class.
+        iconSize: [42, 42],   // De grootte van het klikbare gebied
+        iconAnchor: [21, 42]    // De "punt" van de marker (onderaan in het midden)
     });
 
     const marker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
+
     marker.bindTooltip(restaurant.Name);
     marker.on('click', () => handleMarkerClick(restaurant.id));
     markers[restaurant.id] = marker;
