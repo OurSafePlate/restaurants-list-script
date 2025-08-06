@@ -546,14 +546,15 @@ function initMap() {
     
     const mapElement = document.querySelector(mapElementSelector);
     if (!mapElement) {
-        console.error("FATALE FOUT: Kon de kaart-container '#map' niet vinden op het moment van initialisatie.");
+        console.error("FATALE FOUT: Kon de kaart-container '#map' niet vinden.");
         return;
     }
     
     log("Kaart initialiseren in:", mapElement);
-    isMapInitialized = true; // Zet de vlag direct om dubbele initialisatie te voorkomen.
+    isMapInitialized = true;
 
-    map = L.map(mapElement).setView(INITIAL_COORDS, INITIAL_ZOOM);
+    // 1. Initialiseer de kaart op een tijdelijke, algemene locatie.
+    map = L.map(mapElement).setView([52.1, 5.3], 7); // Zoom uit op Nederland
     
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap © CARTO', maxZoom: 20
@@ -563,13 +564,41 @@ function initMap() {
         if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block';
     });
 
-    // Wacht een ruime marge (nadat de kaarttegels beginnen te laden)
-    // om zeker te zijn dat de kaart volledig gerenderd is.
+    // 2. Vraag om de locatie van de gebruiker.
+    if (navigator.geolocation) {
+        log("Browser ondersteunt geolocatie. Vraag om locatie...");
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                // SUCCES: Gebruiker geeft toestemming
+                const userCoords = [position.coords.latitude, position.coords.longitude];
+                log(`Locatie gevonden: ${userCoords}. Kaart centreren.`);
+                map.flyTo(userCoords, 14); // Zoom in op de gebruiker (zoom 14 is goed voor een stad)
+                 setTimeout(() => {
+                    handleSearchArea();
+                }, 1000); // Wacht tot de 'flyTo' animatie klaar is.
+            },
+            () => {
+                // FOUT/GEWEIGERD: Gebruiker weigert of er treedt een fout op
+                log("Toestemming voor locatie geweigerd of mislukt. Val terug op standaardlocatie.");
+                map.flyTo(INITIAL_COORDS, INITIAL_ZOOM); // Val terug op Arnhem
+                setTimeout(() => {
+                    handleSearchArea();
+                }, 1000); // Wacht tot de 'flyTo' animatie klaar is.
+            }
+        );
+    } else {
+        // GEEN GEOLOCATIE: De browser ondersteunt het helemaal niet
+        log("Browser ondersteunt geen geolocatie. Val terug op standaardlocatie.");
+        map.flyTo(INITIAL_COORDS, INITIAL_ZOOM);
+        setTimeout(() => {
+            handleSearchArea();
+        }, 1000); // Wacht tot de 'flyTo' animatie klaar is.
+    }
+
+    // De invalidateSize blijft belangrijk voor de rendering
     setTimeout(() => {
-        log("Forceer redraw en haal data op.");
         map.invalidateSize();
-        handleSearchArea();
-    }, 400); // 400ms is een veilige, ruime marge.
+    }, 200);
 }
 
 function createMarker(restaurant) {
@@ -678,24 +707,21 @@ function openMapOverlay() {
         return;
     }
 
-    // Maak de overlay zichtbaar. Dit triggert de CSS-transitie.
     mapOverlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     
-    // Wacht een fractie van een seconde zodat de display-wijziging is verwerkt.
-    setTimeout(() => {
+    requestAnimationFrame(() => {
         mapOverlay.style.opacity = '1';
 
-        // Initialiseer de kaart NU PAS.
         if (!isMapInitialized) {
+            // We initialiseren de kaart nu ZONDER direct een locatie in te stellen.
+            // De locatie wordt bepaald door de geolocatie-check.
             initMap();
         } else {
-            // Als de kaart al bestaat, forceer een redraw.
-            setTimeout(() => {
-                if (map) map.invalidateSize();
-            }, 100);
+            // Als de kaart al bestaat, gewoon opnieuw tekenen.
+            setTimeout(() => { if (map) map.invalidateSize(); }, 100);
         }
-    }, 10); // Een minimale vertraging van 10ms is al genoeg.
+    });
 }
 
 function closeMapOverlay() {
