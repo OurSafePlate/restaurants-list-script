@@ -577,28 +577,30 @@ function createMarker(restaurant) {
     const lon = restaurant.geo_location?.data?.lng;
 
     if (!lat || !lon || !map) return;
-    
-    // 1. Haal de allergy_rating op. Toon een '-' als deze niet bestaat.
+
+    // Haal de allergy_rating op. Toon een '-' als deze niet bestaat.
     const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
 
-    // 2. Definieer de URL naar je vleugel-icoon.
-    // BELANGRIJK: Upload dit icoon naar Webflow Assets en plak hier de juiste URL.
-    const wingIconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6893ba25a525869cfae19793_pngwing.com.png"; 
+    // BELANGRIJK: URL naar je vleugel-icoon. Zorg dat deze correct is.
+    const wingIconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6893ba25a525869cfae19793_pngwing.com.png";
 
-    // 3. Bouw de HTML voor het custom icoon met de nieuwe CSS classes.
+    // --- DE WIJZIGING: Bouw de nieuwe HTML-structuur ---
     const customIconHtml = `
-        <div class="custom-map-marker">
-            <img src="${wingIconUrl}" class="map-marker-icon-img">
-            <span class="map-marker-rating-text">${ratingText}</span>
+        <div class="marker-wrapper">
+            <div class="marker-icon-body">
+                <img src="${wingIconUrl}" class="marker-icon-img">
+            </div>
+            <div class="marker-rating-flag">
+                ${ratingText}
+            </div>
         </div>
     `;
 
-    // 4. Maak het Leaflet divIcon aan.
     const customIcon = L.divIcon({
         html: customIconHtml,
-        className: '', // Belangrijk: laat dit leeg om conflicten te voorkomen. De styling zit in onze eigen class.
-        iconSize: [42, 42],   // De grootte van het klikbare gebied
-        iconAnchor: [21, 42]    // De "punt" van de marker (onderaan in het midden)
+        className: '', // Laat leeg om CSS-conflicten te voorkomen
+        iconSize: [38, 48],   // De afmetingen van de .marker-wrapper
+        iconAnchor: [19, 48]    // De "punt" van de marker (onderaan in het midden van de cirkel)
     });
 
     const marker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
