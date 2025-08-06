@@ -583,7 +583,7 @@ function createMarker(restaurant) {
 
     // 2. Definieer de URL naar je vleugel-icoon.
     // BELANGRIJK: Upload dit icoon naar Webflow Assets en plak hier de juiste URL.
-    const wingIconUrl = "https://uploads-ssl.webflow.com/6489a426913b063234a755a3/6489a426913b063234a755d6_Wing.svg"; // VERVANG DIT MET JE EIGEN ICOON URL
+    const wingIconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6893ba25a525869cfae19793_pngwing.com.png"; 
 
     // 3. Bouw de HTML voor het custom icoon met de nieuwe CSS classes.
     const customIconHtml = `
