@@ -582,7 +582,7 @@ function createMarker(restaurant) {
     const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
 
     // BELANGRIJK: URL naar je vleugel-icoon. Zorg dat deze correct is.
-    const wingIconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6893ba25a525869cfae19793_pngwing.com.png";
+    const wingIconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6893bdc678b1b5d1cc10666a_Ontwerp%20zonder%20titel%20(30).png";
 
     // --- DE WIJZIGING: Bouw de nieuwe HTML-structuur ---
     const customIconHtml = `
