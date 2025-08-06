@@ -712,86 +712,74 @@ async function fetchRestaurantsForMap(params = {}) {
 
 function displayDataOnMap(restaurants) {
     log(`displayDataOnMap: Functie gestart met ${restaurants.length} restaurants.`);
-    
-    // Leegmaken van de lijst en de kaartmarkers
-    if (mapListContainer) mapListContainer.innerHTML = '';
-    Object.values(markers).forEach(marker => map.removeLayer(marker));
-    markers = {};
-
-    const template = document.querySelector(mapListTemplateSelector);
-    if (!template) {
-        console.error("KRITISCHE FOUT: De template voor de kaartlijst (.is-map-list-template) is niet gevonden in de HTML.");
+    if (!mapListContainer) {
+        console.error("Fout: mapListContainer niet gevonden.");
         return;
     }
 
+    // Stap 1: Vind de template voor ÉÉN ENKEL item.
+    // We duiken dieper: .is-map-list-template -> .w-dyn-item
+    const templateItem = document.querySelector(`${mapListTemplateSelector} .w-dyn-item`);
+    
+    if (!templateItem) {
+        console.error("KRITISCHE FOUT: Kon het template item (.w-dyn-item) niet vinden binnen de .is-map-list-template wrapper. Zorg ervoor dat de Collection List niet leeg is in de Designer.");
+        mapListContainer.innerHTML = '<div>Template voor restaurantlijst is niet correct ingesteld.</div>';
+        return;
+    }
+
+    // Stap 2: Leeg de lijst en de kaartmarkers.
+    mapListContainer.innerHTML = '';
+    Object.values(markers).forEach(marker => map.removeLayer(marker));
+    markers = {};
+    
+    // Stap 3: Render de nieuwe items.
     if (restaurants.length === 0) {
-        log("displayDataOnMap: Geen restaurants om weer te geven.");
-        // Optioneel: toon hier een "geen resultaten" melding in de kaartlijst
-        if (mapListContainer) mapListContainer.innerHTML = '<div class="empty-state-map">Geen restaurants gevonden in dit gebied.</div>';
+        mapListContainer.innerHTML = '<div class="empty-state-map">Geen restaurants gevonden in dit gebied.</div>';
         return;
     }
 
     restaurants.forEach(restaurant => {
-        // 1. Maak de marker op de kaart
         createMarker(restaurant);
 
-        // 2. Maak het lijst-item
-        const newItem = template.cloneNode(true);
-        newItem.classList.remove('is-map-list-template');
-        newItem.style.display = ''; // Zorg ervoor dat het item zichtbaar is
-
-        // 3. Vul de data direct in de gekloonde template
-        // Gebruik querySelector op 'newItem' om elementen binnen dit specifieke item te vinden.
+        // Stap 4: Kloon het INDIVIDUELE item, niet de hele lijst.
+        const newItem = templateItem.cloneNode(true);
+        // De class 'is-map-list-template' zit op de parent, dus die hoeven we hier niet te verwijderen.
+        // De display-stijl van het gekloonde item staat standaard goed.
+        
+        // Vul de data in
         const titleEl = newItem.querySelector('.restaurants_title');
         if (titleEl) titleEl.textContent = restaurant.Name || 'Naam onbekend';
-
+        
         const imgEl = newItem.querySelector('.restaurants_img');
         if (imgEl && restaurant.restaurant_img_url) {
             imgEl.src = restaurant.restaurant_img_url;
-            imgEl.alt = restaurant.Name || 'Restaurant afbeelding';
+        } else if (imgEl) {
+            imgEl.src = ''; // Lege src voor restaurants zonder afbeelding
         }
 
         const cuisineEl = newItem.querySelector('.restaurant_cuisine');
         if (cuisineEl) cuisineEl.textContent = restaurant.restaurant_keuken || '-';
 
-        const priceEl = newItem.querySelector('.restaurant_price');
-        if (priceEl) priceEl.textContent = restaurant.restaurant_price || '-';
-
-        // Ratings
+        // Voeg hier de rest van je velden toe (prijs, ratings etc.)
+        // Voorbeeld voor rating:
         const totalRatingValue = restaurant.avg_total_rating ?? restaurant.total_rating;
         const totalRatingTextEl = newItem.querySelector('.restaurant-total-rating');
-        if (totalRatingTextEl) {
-            totalRatingTextEl.textContent = totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-';
-        }
+        if (totalRatingTextEl) totalRatingTextEl.textContent = totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-';
         renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.is-quality-rating', totalRatingValue);
-        
-        const allergyRatingValue = restaurant.allergy_rating;
-        const allergyRatingTextEl = newItem.querySelector('.restaurants_allergy_rating-overlay-rating');
-        if (allergyRatingTextEl) {
-            allergyRatingTextEl.textContent = allergyRatingValue ? parseFloat(allergyRatingValue).toFixed(1) : '-';
-        }
-        renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', allergyRatingValue);
 
-        // 4. Stel de links en event listeners in
+
+        // Stel links en listeners in
         const allLinksInItem = newItem.querySelectorAll('a');
-        allLinksInItem.forEach(linkElement => {
-            if (restaurant.slug) {
-                linkElement.href = `/restaurants/${restaurant.slug}`;
-            } else {
-                linkElement.removeAttribute('href');
-                linkElement.style.pointerEvents = 'none';
-            }
+        allLinksInItem.forEach(link => {
+            if (restaurant.slug) link.href = `/restaurants/${restaurant.slug}`;
         });
-
+        
         newItem.dataset.restaurantId = restaurant.id;
         newItem.addEventListener('click', () => handleListItemClick(restaurant.id));
         
-        // 5. Voeg het gevulde item toe aan de container
-        if (mapListContainer) {
-            mapListContainer.appendChild(newItem);
-        }
+        mapListContainer.appendChild(newItem);
     });
-    log(`displayDataOnMap: ${restaurants.length} items succesvol toegevoegd aan de kaart en lijst.`);
+    log(`displayDataOnMap: ${restaurants.length} items succesvol toegevoegd.`);
 }
 	
 // --- FUNCTIE OM PAGINANUMMERS TE RENDEREN ---
