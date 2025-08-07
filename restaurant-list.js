@@ -609,13 +609,11 @@ function createMarker(restaurant) {
 
     if (!lat || !lon || !map) return;
 
-    // Haal de allergy_rating op. Toon een '-' als deze niet bestaat.
+    // DE FIX: Zorg ervoor dat we de allergy_rating gebruiken
     const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
 
-    // BELANGRIJK: URL naar je vleugel-icoon. Zorg dat deze correct is.
-    const wingIconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6893bdc678b1b5d1cc10666a_Ontwerp%20zonder%20titel%20(30).png";
+    const wingIconUrl = "https://uploads-ssl.webflow.com/6489a426913b063234a755a3/6489a426913b063234a755d6_Wing.svg";
 
-    // --- DE WIJZIGING: Bouw de nieuwe HTML-structuur ---
     const customIconHtml = `
         <div class="marker-wrapper">
             <div class="marker-icon-body">
@@ -629,9 +627,9 @@ function createMarker(restaurant) {
 
     const customIcon = L.divIcon({
         html: customIconHtml,
-        className: '', // Laat leeg om CSS-conflicten te voorkomen
-        iconSize: [38, 48],   // De afmetingen van de .marker-wrapper
-        iconAnchor: [19, 48]    // De "punt" van de marker (onderaan in het midden van de cirkel)
+        className: '',
+        iconSize: [38, 48],
+        iconAnchor: [19, 48]
     });
 
     const marker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
@@ -757,26 +755,21 @@ async function fetchRestaurantsForMap(params = {}) {
 function displayDataOnMap(restaurants) {
     log(`displayDataOnMap: Functie gestart met ${restaurants.length} restaurants.`);
     if (!mapListContainer) {
-        console.error("Fout: mapListContainer niet gevonden.");
+        console.error("Fout in displayDataOnMap: mapListContainer niet gevonden.");
         return;
     }
 
-    // Stap 1: Vind de template voor ÉÉN ENKEL item.
-    // We duiken dieper: .is-map-list-template -> .w-dyn-item
     const templateItem = document.querySelector(`${mapListTemplateSelector} .w-dyn-item`);
-    
     if (!templateItem) {
-        console.error("KRITISCHE FOUT: Kon het template item (.w-dyn-item) niet vinden binnen de .is-map-list-template wrapper. Zorg ervoor dat de Collection List niet leeg is in de Designer.");
+        console.error("KRITISCHE FOUT: Kon het template item (.w-dyn-item) niet vinden binnen de .is-map-list-template wrapper.");
         mapListContainer.innerHTML = '<div>Template voor restaurantlijst is niet correct ingesteld.</div>';
         return;
     }
 
-    // Stap 2: Leeg de lijst en de kaartmarkers.
     mapListContainer.innerHTML = '';
     Object.values(markers).forEach(marker => map.removeLayer(marker));
     markers = {};
-    
-    // Stap 3: Render de nieuwe items.
+
     if (restaurants.length === 0) {
         mapListContainer.innerHTML = '<div class="empty-state-map">Geen restaurants gevonden in dit gebied.</div>';
         return;
@@ -784,13 +777,11 @@ function displayDataOnMap(restaurants) {
 
     restaurants.forEach(restaurant => {
         createMarker(restaurant);
-
-        // Stap 4: Kloon het INDIVIDUELE item, niet de hele lijst.
         const newItem = templateItem.cloneNode(true);
-        // De class 'is-map-list-template' zit op de parent, dus die hoeven we hier niet te verwijderen.
-        // De display-stijl van het gekloonde item staat standaard goed.
         
-        // Vul de data in
+        // --- START VAN HET INVULLEN VAN ALLE DATA ---
+
+        // 1. Vul de basisinformatie in
         const titleEl = newItem.querySelector('.restaurants_title');
         if (titleEl) titleEl.textContent = restaurant.Name || 'Naam onbekend';
         
@@ -798,19 +789,64 @@ function displayDataOnMap(restaurants) {
         if (imgEl && restaurant.restaurant_img_url) {
             imgEl.src = restaurant.restaurant_img_url;
         } else if (imgEl) {
-            imgEl.src = ''; // Lege src voor restaurants zonder afbeelding
+            imgEl.src = '';
         }
 
         const cuisineEl = newItem.querySelector('.restaurant_cuisine');
         if (cuisineEl) cuisineEl.textContent = restaurant.restaurant_keuken || '-';
 
-        // Voeg hier de rest van je velden toe (prijs, ratings etc.)
-        // Voorbeeld voor rating:
-        const totalRatingValue = restaurant.avg_total_rating ?? restaurant.total_rating;
-        const totalRatingTextEl = newItem.querySelector('.restaurant-total-rating');
-        if (totalRatingTextEl) totalRatingTextEl.textContent = totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-';
-        renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.is-quality-rating', totalRatingValue);
+        const priceEl = newItem.querySelector('.restaurant_price');
+        if (priceEl) priceEl.textContent = restaurant.restaurant_price || '-';
+        
+        const reviewCountEl = newItem.querySelector('.restaurants_rating_count-text');
+        if (reviewCountEl) reviewCountEl.textContent = `${restaurant.review_count || 0} beoordelingen`;
 
+        // 2. Vul de Our Safe Score (allergy_rating) in
+        const allergyRatingValue = restaurant.allergy_rating;
+        const allergyRatingTextEl = newItem.querySelector('.restaurants_allergy_rating-overlay-rating');
+        if (allergyRatingTextEl) {
+            allergyRatingTextEl.textContent = allergyRatingValue ? parseFloat(allergyRatingValue).toFixed(1) : '-';
+        }
+        renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', allergyRatingValue);
+        
+        // 3. Vul de laatste twee reviews in
+        const reviewsContainerEl = newItem.querySelector('.recent-reviews-container');
+        const review1El = newItem.querySelector('.first-example-review');
+        const review2El = newItem.querySelector('.second-example-review');
+
+        if (reviewsContainerEl && review1El && review2El) {
+            const review1Text = restaurant.latest_review_1_body;
+            const review2Text = restaurant.latest_review_2_body;
+            let hasVisibleReviews = false;
+
+            if (review1Text && review1Text.trim() !== '') {
+                review1El.textContent = `"${truncateText(review1Text, 80)}"`;
+                review1El.style.display = 'block';
+                hasVisibleReviews = true;
+            } else {
+                review1El.style.display = 'none';
+            }
+
+            if (review2Text && review2Text.trim() !== '') {
+                review2El.textContent = `"${truncateText(review2Text, 80)}"`;
+                review2El.style.display = 'block';
+                hasVisibleReviews = true;
+            } else {
+                review2El.style.display = 'none';
+            }
+
+            reviewsContainerEl.style.display = hasVisibleReviews ? 'block' : 'none';
+        }
+
+        // 4. Render de allergie-icoontjes
+        renderAllergyIcons(newItem, restaurant.review_allergies);
+        
+        const allergyTitleEl = newItem.querySelector('#allergy-title-icons');
+        if (allergyTitleEl) {
+            allergyTitleEl.style.display = restaurant.review_allergies ? 'block' : 'none';
+        }
+
+        // --- EINDE VAN HET INVULLEN ---
 
         // Stel links en listeners in
         const allLinksInItem = newItem.querySelectorAll('a');
