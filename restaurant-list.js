@@ -556,8 +556,10 @@ function initMap() {
     // 1. Initialiseer de kaart op een tijdelijke, algemene locatie.
     map = L.map(mapElement).setView([52.1, 5.3], 7); // Zoom uit op Nederland
     
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CARTO', maxZoom: 20
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
     }).addTo(map);
 
     map.on('moveend', () => {
