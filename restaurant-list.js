@@ -437,7 +437,7 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
             mealOptEl.innerHTML = '';
         }
 
-        const totalRatingValue = restaurant.avg_total_rating ?? restaurant.total_rating;
+        const totalRatingValue = restaurantData.total_rating;
         const totalRatingTextEl = newItem.querySelector('.restaurant-total-rating');
         if (totalRatingTextEl) {
             totalRatingTextEl.textContent = totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-';
