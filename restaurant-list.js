@@ -612,7 +612,7 @@ function createMarker(restaurant) {
     // DE FIX: Zorg ervoor dat we de allergy_rating gebruiken
     const ratingText = restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-';
 
-    const wingIconUrl = "https://uploads-ssl.webflow.com/6489a426913b063234a755a3/6489a426913b063234a755d6_Wing.svg";
+    const wingIconUrl = "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6893bdc678b1b5d1cc10666a_Ontwerp%20zonder%20titel%20(30).png";
 
     const customIconHtml = `
         <div class="marker-wrapper">
