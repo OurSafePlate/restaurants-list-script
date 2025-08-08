@@ -645,25 +645,39 @@ async function handleSearchArea() {
     if (searchAreaButton) searchAreaButton.parentElement.style.display = 'none';
 
     const bounds = map.getBounds();
-    // Validatie: Zorg ervoor dat we geen '0x0' gebied opvragen
-    if (bounds.getSouthWest().equals(bounds.getNorthEast())) {
-        log("Waarschuwing: Kaartgrenzen zijn identiek. Zoekopdracht wordt uitgesteld.");
-        return;
-    }
-
     const params = new URLSearchParams({
         sw_lat: bounds.getSouthWest().lat,
         sw_lng: bounds.getSouthWest().lng,
         ne_lat: bounds.getNorthEast().lat,
         ne_lng: bounds.getNorthEast().lng,
     });
+    
+    // Zoek het filterformulier van de kaart
+    const mapFilterFormEl = document.querySelector('#map-filter-form');
+
+    if (mapFilterFormEl) {
+        const mapFilters = {
+            filter_keuken: getSelectedCheckboxDataValues('.filter-group-keuken', 'cuisine', mapFilterFormEl),
+            filter_meal_options: getSelectedCheckboxDataValues('.filter-group-meal-options', 'meal-options', mapFilterFormEl),
+            filter_price: getSelectedCheckboxDataValues('.filter-group-price', 'price', mapFilterFormEl),
+            filter_allergie: getSelectedCheckboxDataValues('.filter-group-allergie', 'allergy', mapFilterFormEl)
+        };
+        log("Actieve kaartfilters:", mapFilters);
+
+        if (mapFilters.filter_keuken.length > 0) params.append('filter_keuken', mapFilters.filter_keuken.join(','));
+        if (mapFilters.filter_meal_options.length > 0) params.append('filter_meal_options', mapFilters.filter_meal_options.join(','));
+        if (mapFilters.filter_price.length > 0) params.append('filter_price', mapFilters.filter_price.join(','));
+        if (mapFilters.filter_allergie.length > 0) params.append('filter_allergie', mapFilters.filter_allergie.join(','));
+    }
 
     try {
-        const result = await fetchDataWithRetry(`${API_RESTAURANTS_LIST}?${params.toString()}`, {});
+        const requestUrl = `${API_RESTAURANTS_LIST}?${params.toString()}`;
+        log(`API call met kaartfilters: ${requestUrl}`);
+        const result = await fetchDataWithRetry(requestUrl, {});
         currentMapRestaurants = result.items || [];
         displayDataOnMap(currentMapRestaurants);
     } catch (error) {
-        console.error("Fout bij zoeken in gebied:", error);
+        console.error("Fout bij zoeken in gebied met filters:", error);
     }
 }
 	
@@ -999,23 +1013,22 @@ function renderPageNumbers() {
     renderPageNumbers(); // Deze functie blijft ongewijzigd
 }
   
-  function getSelectedCheckboxDataValues(groupSelector, dataAttributeKebabCase) {
-    const group = document.querySelector(groupSelector);
+ function getSelectedCheckboxDataValues(groupSelector, dataAttributeKebabCase, parentElement = document) {
+    const group = parentElement.querySelector(groupSelector);
     if (!group) {
-        log(`Checkbox groep niet gevonden voor selector: ${groupSelector}`);
-        return []; // Altijd een array teruggeven
+        // log(`Checkbox groep niet gevonden voor selector: ${groupSelector}`);
+        return [];
     }
+    
     const selectedValues = [];
     const dataAttributeCamelCase = dataAttributeKebabCase.replace(/-([a-z])/g, g => g[1].toUpperCase());
 
     group.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-        if (cb.dataset && typeof cb.dataset[dataAttributeCamelCase] !== 'undefined') { // Check of dataset[key] bestaat
+        if (cb.dataset && typeof cb.dataset[dataAttributeCamelCase] !== 'undefined') {
             selectedValues.push(cb.dataset[dataAttributeCamelCase]);
-        } else {
-            log(`Waarschuwing: checkbox in groep ${groupSelector} mist data-attribuut '${dataAttributeKebabCase}' (als '${dataAttributeCamelCase}') of waarde is undefined.`, cb);
         }
     });
-    return selectedValues; // Altijd een array teruggeven
+    return selectedValues;
 }
   
   function handleFilterChange(isClearAll = false) {
@@ -1410,6 +1423,16 @@ async function initializeSite() {
     if (mainFilterForm) {
         mainFilterForm.addEventListener('change', (e) => {
             if (e.target.type === 'checkbox') handleFilterChange();
+        });
+    }
+
+	const mapFilterForm = document.querySelector('#map-filter-form');
+    if (mapFilterForm) {
+        mapFilterForm.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                log("Kaartfilter veranderd, zoek opnieuw in gebied.");
+                handleSearchArea();
+            }
         });
     }
 
