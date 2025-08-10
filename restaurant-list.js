@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mapListTemplateSelector = '.is-map-list-template';
   const filtersToggleButtonSelector = '#map-filters-toggle-button';
   const filterPanelSelector = '#map-filter-form-content';
+  const mapSidebarSelector = '.map-sidebar';
 
 
   // --- SELECTOREN ---
@@ -76,6 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let markers = {}; // { restaurantId: markerObject }
   let isMapInitialized = false; // Vlag om te zien of de kaart al geladen is
   let currentMapRestaurants = []; // Slaat de resultaten op die op de kaart getoond worden	
+  let mapSidebarEl;
+  let touchStartY = 0;
 
   // --- DOM ELEMENTEN ---
    let restaurantListWrapperEl, templateItemEl, mainSliderTemplateNodeGlobal, searchInputEl,
@@ -682,12 +685,19 @@ async function handleSearchArea() {
 }
 	
 function handleMarkerClick(id) {
-    if (!mapListContainer) return;
-    const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
-    if (listItem) {
-        listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        highlightSelection(id, true);
-    }
+    if (!mapListContainer || !mapSidebarEl) return;
+
+    // 1. Toon het paneel als het verborgen was
+    mapSidebarEl.classList.remove('is-collapsed');
+
+    // 2. Wacht even tot de animatie start, en scroll dan.
+    setTimeout(() => {
+        const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
+        if (listItem) {
+            listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            highlightSelection(id, true);
+        }
+    }, 300); // Moet overeenkomen met de CSS transitie-duur
 }
 
 function handleListItemClick(id) {
@@ -881,6 +891,34 @@ function displayDataOnMap(restaurants) {
     });
     log(`displayDataOnMap: ${restaurants.length} items succesvol toegevoegd.`);
 }
+
+// --- START NIEUWE SWIPE-FUNCTIES ---
+
+function handleTouchStart(e) {
+    // Sla de startpositie van de vinger op
+    touchStartY = e.touches[0].clientY;
+}
+
+function handleTouchMove(e) {
+    if (touchStartY === 0) return;
+
+    const touchCurrentY = e.touches[0].clientY;
+    const diffY = touchCurrentY - touchStartY;
+
+    // Als de gebruiker meer dan 50px naar beneden swipet, verberg het paneel
+    if (diffY > 50) {
+        mapSidebarEl.classList.add('is-collapsed');
+        touchStartY = 0; // Reset de startpositie
+    }
+    
+    // Als de gebruiker meer dan 50px naar boven swipet, toon het paneel
+    if (diffY < -50) {
+        mapSidebarEl.classList.remove('is-collapsed');
+        touchStartY = 0; // Reset de startpositie
+    }
+}
+
+// --- EINDE NIEUWE SWIPE-FUNCTIES ---
 	
 // --- FUNCTIE OM PAGINANUMMERS TE RENDEREN ---
 function renderPageNumbers() {
@@ -1381,6 +1419,7 @@ async function initializeSite() {
     finsweetLoaderEl = document.querySelector(finsweetLoaderSelector);
     finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector);
     searchAreaButton = document.querySelector(searchAreaButtonSelector);
+	mapSidebarEl = document.querySelector(mapSidebarSelector);
     
     if (!restaurantListWrapperEl) return console.error("Hoofdlijst wrapper niet gevonden!");
     if (templateItemEl) templateItemEl.style.display = 'none';
@@ -1400,6 +1439,10 @@ async function initializeSite() {
             const mapFilterPanel = document.querySelector('#map-view-filter-panel');
             if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
         }
+		if (mapSidebarEl) {
+    	   mapSidebarEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+    	   mapSidebarEl.addEventListener('touchmove', handleTouchMove, { passive: true });
+		}
 
         // Hoofdlijst Filters & Paginatie
         if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
