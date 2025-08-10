@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+	document.addEventListener('DOMContentLoaded', () => {
   // --- CONFIGURATIE ---
   const API_GROUP_URL = "https://x8ki-letl-twmt.n7.xano.io/api:tNUMBEXY"; // Gebruik overal deze ID
 
@@ -687,17 +687,20 @@ async function handleSearchArea() {
 function handleMarkerClick(id) {
     if (!mapListContainer || !mapSidebarEl) return;
 
-    // 1. Toon het paneel als het verborgen was
+    // 1. Zorg dat het paneel naar de middelste stand gaat
     mapSidebarEl.classList.remove('is-collapsed');
+    const targetVh = 40; // De middenpositie
+    mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
+    mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
 
-    // 2. Wacht even tot de animatie start, en scroll dan.
+    // 2. Wacht en scroll
     setTimeout(() => {
         const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
         if (listItem) {
             listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             highlightSelection(id, true);
         }
-    }, 300); // Moet overeenkomen met de CSS transitie-duur
+    }, 300);
 }
 
 function handleListItemClick(id) {
@@ -895,27 +898,75 @@ function displayDataOnMap(restaurants) {
 // --- START NIEUWE SWIPE-FUNCTIES ---
 
 function handleTouchStart(e) {
-    // Sla de startpositie van de vinger op
+    // Voorkom dat de pagina scrollt tijdens het swipen
+    e.preventDefault(); 
+    mapSidebarEl.style.transition = 'none'; // Schakel de animatie uit tijdens het slepen
     touchStartY = e.touches[0].clientY;
 }
 
 function handleTouchMove(e) {
     if (touchStartY === 0) return;
+    touchCurrentY = e.touches[0].clientY;
 
-    const touchCurrentY = e.touches[0].clientY;
     const diffY = touchCurrentY - touchStartY;
-
-    // Als de gebruiker meer dan 50px naar beneden swipet, verberg het paneel
-    if (diffY > 50) {
-        mapSidebarEl.classList.add('is-collapsed');
-        touchStartY = 0; // Reset de startpositie
+    
+    // Bereken de huidige transform-positie en voeg het verschil toe
+    // Dit zorgt ervoor dat het paneel je vinger "live" volgt.
+    // We moeten de startpositie achterhalen (collapsed of niet)
+    let currentTranslateY;
+    if(mapSidebarEl.classList.contains('is-collapsed')){
+        currentTranslateY = window.innerHeight - 40;
+    } else {
+        // We moeten de huidige 'vh' omrekenen naar pixels
+        const currentVh = parseFloat(mapSidebarEl.style.getPropertyValue('--panel-height-vh') || '40');
+        currentTranslateY = window.innerHeight * (1 - currentVh / 100);
     }
     
-    // Als de gebruiker meer dan 50px naar boven swipet, toon het paneel
-    if (diffY < -50) {
+    let newY = currentTranslateY + diffY;
+    
+    // Zorg ervoor dat je het paneel niet te ver sleept
+    const minHeightPx = window.innerHeight * 0.2; // 20vh (volledig uitgeschoven)
+    const maxHeightPx = window.innerHeight - 40; // Minimale hoogte (ingeklapt)
+    newY = Math.max(minHeightPx, Math.min(newY, maxHeightPx));
+    
+    mapSidebarEl.style.transform = `translateY(${newY}px)`;
+}
+
+function handleTouchEnd() {
+    if (touchStartY === 0) return;
+    
+    mapSidebarEl.style.transition = 'transform 0.3s ease-out'; // Zet de animatie weer aan
+
+    const currentPos = mapSidebarEl.getBoundingClientRect().top;
+    const screenHeight = window.innerHeight;
+
+    // Bepaal de "snap points"
+    const snapPointHigh = screenHeight * 0.2; // 80% van het scherm zichtbaar
+    const snapPointMid = screenHeight * 0.6;  // 40% van het scherm zichtbaar
+    const snapPointLow = screenHeight - 40;   // Inklappen
+
+    // Bereken de dichtstbijzijnde snap point
+    const distances = [
+        { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
+        { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
+        { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
+    ];
+    const closest = distances.sort((a, b) => a.diff - b.diff)[0];
+
+    // Snap naar de dichtstbijzijnde positie
+    if (closest.point === snapPointLow) {
+        mapSidebarEl.classList.add('is-collapsed');
+        mapSidebarEl.style.transform = ''; // Laat CSS het overnemen
+    } else {
         mapSidebarEl.classList.remove('is-collapsed');
-        touchStartY = 0; // Reset de startpositie
+        const targetVh = (screenHeight - closest.point) / screenHeight * 100;
+        mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
+        mapSidebarEl.style.setProperty('--panel-height-vh', targetVh); // Sla de hoogte op voor de volgende drag
     }
+
+    // Reset de posities
+    touchStartY = 0;
+    touchCurrentY = 0;
 }
 
 // --- EINDE NIEUWE SWIPE-FUNCTIES ---
@@ -1440,8 +1491,9 @@ async function initializeSite() {
             if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
         }
 		if (mapSidebarEl) {
-    	   mapSidebarEl.addEventListener('touchstart', handleTouchStart, { passive: true });
-    	   mapSidebarEl.addEventListener('touchmove', handleTouchMove, { passive: true });
+		    mapSidebarEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+  			mapSidebarEl.addEventListener('touchmove', handleTouchMove, { passive: true });
+    		mapSidebarEl.addEventListener('touchend', handleTouchEnd, { passive: true });
 		}
 
         // Hoofdlijst Filters & Paginatie
