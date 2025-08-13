@@ -1005,7 +1005,7 @@ function renderPreviewCard(restaurant) {
                 
                 <!-- De close-knop met de afbeelding erin -->
                 <div class="preview-close-button" onclick="closePreviewCard(event)">
-                    <img src="URL_VAN_JE_CLOSE_ICOON.svg" alt="Sluiten" class="preview-close-icon">
+                    <img src="https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/67f63683e732aa82cb556cb0_Ontwerp%20zonder%20titel%20(7).png" alt="Sluiten" class="preview-close-icon">
                 </div>
 
                 <!-- De "Our Safe Score" overlay -->
