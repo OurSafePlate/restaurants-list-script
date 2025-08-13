@@ -687,46 +687,35 @@ function renderPreviewCard(restaurant) {
     const cardContainer = document.getElementById('map-preview-card');
     if (!cardContainer) return;
 
-    // Hergebruik je rating en icoon logica
-    const totalRatingValue = restaurant.total_rating;
-    const allergyRatingValue = restaurant.allergy_rating;
-
-    // Creëer de HTML voor de preview-kaart, geïnspireerd op je screenshot
     cardContainer.innerHTML = `
         <div class="preview-card-content">
             <div class="preview-image-wrapper">
-                <img src="${restaurant.restaurant_img_url || ''}" loading="lazy" class="preview-image">
-                <div class="preview-close-button" onclick="closePreviewCard()">×</div>
+                <a href="/restaurants/${restaurant.slug || ''}" class="preview-image-link">
+                    <img src="${restaurant.restaurant_img_url || ''}" loading="lazy" class="preview-image">
+                </a>
+                <div class="preview-close-button" onclick="closePreviewCard(event)">×</div>
             </div>
-            <h3 class="preview-title">${restaurant.Name || 'Naam onbekend'}</h3>
-            <div class="preview-rating-line">
-                <span class="preview-rating-text">${totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-'}</span>
-                <!-- Je kunt hier je renderRatingVisuals functie aanroepen of een simpelere weergave gebruiken -->
-                <span class="preview-review-count">(${restaurant.review_count || 0})</span>
-            </div>
-            <div class="preview-info-line">
-                <span>${restaurant.restaurant_price || ''} • ${restaurant.restaurant_keuken || ''}</span>
-            </div>
+            <a href="/restaurants/${restaurant.slug || ''}" class="preview-text-link">
+                <h3 class="preview-title">${restaurant.Name || 'Naam onbekend'}</h3>
+                <div class="preview-rating-line">
+                    <span style="font-weight: bold;">${restaurant.total_rating ? parseFloat(restaurant.total_rating).toFixed(1) : '-'}</span>
+                    <span>(${restaurant.review_count || 0} beoordelingen)</span>
+                </div>
+                <div class="preview-info-line">
+                    <span>${restaurant.restaurant_price || ''} • ${restaurant.restaurant_keuken || ''}</span>
+                </div>
+            </a>
         </div>
     `;
-    cardContainer.style.display = 'block';
 }
 
 // --- NIEUWE FUNCTIE: SLUIT DE PREVIEW CARD ---
 function closePreviewCard(event) {
     if (event) event.stopPropagation(); 
-
-    // Verberg de inhoud van de kaart
-    const cardContainer = document.getElementById('map-preview-card');
-    if (cardContainer) cardContainer.style.display = 'none';
-    
-    // Zet de sidebar terug in de ingeklapte staat
     if (mapSidebarEl) {
         mapSidebarEl.classList.remove('is-preview-mode');
-        mapSidebarEl.classList.add('is-collapsed');
+        // De sidebar valt nu automatisch terug naar de ingeklapte staat door de CSS
     }
-    
-    // Deselecteer alle markers
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
 }
 	
@@ -735,30 +724,27 @@ function handleMarkerClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
-    // Vul de preview-kaart met de data
     renderPreviewCard(restaurant);
 
-    // Zet de sidebar in de speciale 'preview-modus'
     if (mapSidebarEl) {
-        mapSidebarEl.classList.remove('is-collapsed');
+        mapSidebarEl.classList.remove('is-open');
         mapSidebarEl.classList.add('is-preview-mode');
     }
 
-    // Centreer de kaart boven de preview-kaart
     const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
-    
     map.flyTo(targetLatLng, 16);
     
     map.once('moveend', () => {
         if (window.innerWidth <= 767) {
-            const previewHeight = 220; // De hoogte die je in de CSS hebt ingesteld
+            const previewHeight = 220;
             const mapHeight = map.getSize().y;
-            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 30; // 30px extra marge
+            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40; // 40px extra marge
             map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
         }
         highlightSelection(id, false);
     });
 }
+
 
 function handleListItemClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
@@ -809,23 +795,21 @@ function highlightSelection(id, openTooltip = false) {
     
 function openMapOverlay() {
     log("Kaart overlay wordt geopend...");
-    if (!mapOverlay) {
-        console.error("Fout: Kan het kaart-overlay element (#map-overlay) niet vinden.");
-        return;
-    }
+    if (!mapOverlay) return;
 
     mapOverlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     
+    // Zorg ervoor dat de sidebar altijd ingeklapt start op mobiel
+    if (mapSidebarEl && window.innerWidth <= 767) {
+        mapSidebarEl.classList.remove('is-preview-mode', 'is-open');
+    }
+    
     requestAnimationFrame(() => {
         mapOverlay.style.opacity = '1';
-
         if (!isMapInitialized) {
-            // We initialiseren de kaart nu ZONDER direct een locatie in te stellen.
-            // De locatie wordt bepaald door de geolocatie-check.
             initMap();
         } else {
-            // Als de kaart al bestaat, gewoon opnieuw tekenen.
             setTimeout(() => { if (map) map.invalidateSize(); }, 100);
         }
     });
@@ -1015,50 +999,22 @@ function handleTouchMove(e) {
 function handleTouchEnd() {
     if (touchStartY === 0) return;
     
+    mapSidebarEl.classList.remove('is-preview-mode'); // Bij elke swipe verdwijnt de preview
+    
     const diffY = touchCurrentY - touchStartY;
-
-    // BELANGRIJK: Als we in preview-modus zijn en omhoog swipen, open de lijst.
-    if (mapSidebarEl.classList.contains('is-preview-mode') && diffY < -50) {
-        mapSidebarEl.classList.remove('is-preview-mode');
-        mapSidebarEl.classList.remove('is-collapsed'); 
-        // Forceer de transform naar de middenpositie
-        const targetVh = 40; 
-        mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
-        mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
-    } else {
-        // Anders, gebruik de normale snap-logica
-        mapSidebarEl.style.transition = 'transform 0.3s ease-out';
-        const currentPos = mapSidebarEl.getBoundingClientRect().top;
-        const screenHeight = window.innerHeight;
-
-        const snapPointHigh = screenHeight * 0.2; // 80vh
-        const snapPointMid = screenHeight * 0.6;  // 40vh
-        const snapPointLow = screenHeight - 40;   // Inklappen
-
-        const distances = [
-            { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
-            { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
-            { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
-        ];
-        const closest = distances.sort((a, b) => a.diff - b.diff)[0];
-
-        // Verwijder altijd de preview-modus als we swipen
-        mapSidebarEl.classList.remove('is-preview-mode');
-
-        if (closest.point === snapPointLow) {
-            mapSidebarEl.classList.add('is-collapsed');
-            mapSidebarEl.style.transform = ''; // Laat CSS de ingeklapte state regelen
-        } else {
-            mapSidebarEl.classList.remove('is-collapsed');
-            const targetVh = (screenHeight - closest.point) / screenHeight * 100;
-            mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
-            mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
-        }
+    
+    // Als we omhoog swipen, open de lijst. Anders, klap in.
+    if (diffY < -50) { // Swipe omhoog
+        mapSidebarEl.classList.add('is-open');
+    } else if (diffY > 50) { // Swipe omlaag
+        mapSidebarEl.classList.remove('is-open');
     }
-
+    
+    // Reset posities
     touchStartY = 0;
     touchCurrentY = 0;
 }
+
 
 // --- EINDE NIEUWE SWIPE-FUNCTIES ---
 	
