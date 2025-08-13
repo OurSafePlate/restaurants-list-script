@@ -80,6 +80,9 @@
   let mapSidebarEl;
   let touchStartY = 0;
 
+  // --- CENTRALE STATE VOOR HET PANEEL ---
+  let panelState = 'collapsed'; // 'collapsed', 'partial', 'full'
+
   // --- DOM ELEMENTEN ---
    let restaurantListWrapperEl, templateItemEl, mainSliderTemplateNodeGlobal, searchInputEl,
         resultsCountTextEl, paginationPrevEl, paginationNextEl, paginationNumbersContainerEl,
@@ -685,25 +688,22 @@ async function handleSearchArea() {
 }
 	
 function handleMarkerClick(id) {
-    log(`Marker geklikt: ${id}`);
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
-    renderPreviewCard(restaurant);
+    renderPreviewCard(restaurant); // Vul de HTML
 
-    if (mapSidebarEl) {
-        mapSidebarEl.classList.remove('is-collapsed');
-        mapSidebarEl.classList.add('is-preview-mode');
-    }
+    // Toon de preview-kaart en verberg de lijst-sidebar
+    document.getElementById('map-preview-card').classList.add('is-visible');
+    mapSidebarEl.classList.add('is-hidden');
 
     const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
     map.flyTo(targetLatLng, 16);
-    
     map.once('moveend', () => {
         if (window.innerWidth <= 767) {
-            const previewHeight = 220; // Hoogte van de preview-kaart
+            const previewHeight = 220;
             const mapHeight = map.getSize().y;
-            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40; // 40px marge
+            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40;
             map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
         }
     });
@@ -736,25 +736,23 @@ function highlightSelection(id, openTooltip = false) {
     
 function openMapOverlay() {
     log("Kaart overlay wordt geopend...");
-    if (!mapOverlay) {
-        console.error("Fout: Kan het kaart-overlay element (#map-overlay) niet vinden.");
-        return;
-    }
-
+    if (!mapOverlay) return;
     mapOverlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+
+    // Reset de staten
+    document.getElementById('map-preview-card')?.classList.remove('is-visible');
+    mapSidebarEl?.classList.remove('is-hidden');
+    
+    // Zet het paneel in de startpositie zonder animatie
+    mapSidebarEl.style.transition = 'none';
+    mapSidebarEl.style.transform = `translateY(${window.innerHeight - 40}px)`;
+    panelState = 'collapsed';
     
     requestAnimationFrame(() => {
         mapOverlay.style.opacity = '1';
-
-        if (!isMapInitialized) {
-            // We initialiseren de kaart nu ZONDER direct een locatie in te stellen.
-            // De locatie wordt bepaald door de geolocatie-check.
-            initMap();
-        } else {
-            // Als de kaart al bestaat, gewoon opnieuw tekenen.
-            setTimeout(() => { if (map) map.invalidateSize(); }, 100);
-        }
+        if (!isMapInitialized) { initMap(); } 
+        else { setTimeout(() => map && map.invalidateSize(), 100); }
     });
 }
 
@@ -905,10 +903,12 @@ function displayDataOnMap(restaurants) {
 // --- START NIEUWE SWIPE-FUNCTIES ---
 
 function handleTouchStart(e) {
-    // Als we swipen, is de preview-modus direct voorbij.
-    if (mapSidebarEl) mapSidebarEl.classList.remove('is-preview-mode');
-
-    // Bestaande code blijft hieronder...
+    // NIEUW: Als je begint met swipen, zorg dat de preview weg is en de lijst terug is.
+    if (document.getElementById('map-preview-card').classList.contains('is-visible')) {
+        closePreviewCard();
+    }
+    
+    // UW OORSPRONKELIJKE, WERKENDE CODE BLIJFT HIERONDER
     e.preventDefault(); 
     mapSidebarEl.style.transition = 'none';
     touchStartY = e.touches[0].clientY;
@@ -1010,11 +1010,12 @@ function renderPreviewCard(restaurant) {
 
 // --- FUNCTIE: SLUIT DE PREVIEW CARD ---
 function closePreviewCard(event) {
-    if (event) event.stopPropagation(); 
-    if (mapSidebarEl) {
-        mapSidebarEl.classList.remove('is-preview-mode');
-        mapSidebarEl.classList.add('is-collapsed'); // Klap de sidebar in na sluiten
-    }
+    if (event) event.stopPropagation();
+    
+    // Verberg de preview-kaart en toon de lijst-sidebar weer (in de 'collapsed' staat)
+    document.getElementById('map-preview-card').classList.remove('is-visible');
+    mapSidebarEl.classList.remove('is-hidden');
+    
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
 }
 	
