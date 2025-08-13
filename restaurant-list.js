@@ -683,24 +683,73 @@ async function handleSearchArea() {
         console.error("Fout bij zoeken in gebied met filters:", error);
     }
 }
+
+function renderPreviewCard(restaurant) {
+    const cardContainer = document.getElementById('map-preview-card');
+    if (!cardContainer) return;
+
+    // Hergebruik je rating en icoon logica
+    const totalRatingValue = restaurant.total_rating;
+    const allergyRatingValue = restaurant.allergy_rating;
+
+    // Creëer de HTML voor de preview-kaart, geïnspireerd op je screenshot
+    cardContainer.innerHTML = `
+        <div class="preview-card-content">
+            <div class="preview-image-wrapper">
+                <img src="${restaurant.restaurant_img_url || ''}" loading="lazy" class="preview-image">
+                <div class="preview-close-button" onclick="closePreviewCard()">×</div>
+            </div>
+            <h3 class="preview-title">${restaurant.Name || 'Naam onbekend'}</h3>
+            <div class="preview-rating-line">
+                <span class="preview-rating-text">${totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-'}</span>
+                <!-- Je kunt hier je renderRatingVisuals functie aanroepen of een simpelere weergave gebruiken -->
+                <span class="preview-review-count">(${restaurant.review_count || 0})</span>
+            </div>
+            <div class="preview-info-line">
+                <span>${restaurant.restaurant_price || ''} • ${restaurant.restaurant_keuken || ''}</span>
+            </div>
+        </div>
+    `;
+    cardContainer.style.display = 'block';
+}
+
+// --- NIEUWE FUNCTIE: SLUIT DE PREVIEW CARD ---
+function closePreviewCard() {
+    const cardContainer = document.getElementById('map-preview-card');
+    if (cardContainer) cardContainer.style.display = 'none';
+    if (mapSidebarEl) {
+        mapSidebarEl.classList.remove('is-preview-mode');
+        mapSidebarEl.classList.add('is-collapsed'); // Verberg de sidebar weer
+    }
+    // Deselecteer alle markers
+     Object.values(markers).forEach(m => m.setZIndexOffset(0));
+}
 	
 function handleMarkerClick(id) {
-    if (!mapListContainer || !mapSidebarEl) return;
+    log(`Marker geklikt: ${id}`);
+    const restaurant = currentMapRestaurants.find(r => r.id === id);
+    if (!restaurant) return;
+    
+    // 1. Toon de preview-kaart met de data
+    renderPreviewCard(restaurant);
+    
+    // 2. Zet de sidebar in de speciale 'preview-modus'
+    if (mapSidebarEl) {
+        mapSidebarEl.classList.remove('is-collapsed');
+        mapSidebarEl.classList.add('is-preview-mode');
+    }
 
-    // 1. Zorg dat het paneel naar de middelste stand gaat
-    mapSidebarEl.classList.remove('is-collapsed');
-    const targetVh = 40; // De middenpositie
-    mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
-    mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
-
-    // 2. Wacht en scroll
-    setTimeout(() => {
-        const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
-        if (listItem) {
-            listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            highlightSelection(id, true);
-        }
-    }, 300);
+    // 3. Centreer de kaart boven de preview-kaart
+    const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
+    const panOffset = (window.innerHeight / 2) - 120; // Pan omhoog, 120px is een schatting voor de helft van de preview-hoogte
+    
+    map.flyTo(targetLatLng, 16);
+    map.once('moveend', () => {
+      if (window.innerWidth <= 767) { // Alleen pannen op mobiel
+        map.panBy([0, -panOffset], { animate: true, duration: 0.25 });
+      }
+      highlightSelection(id, true);
+    });
 }
 
 function handleListItemClick(id) {
@@ -957,6 +1006,21 @@ function handleTouchMove(e) {
 
 function handleTouchEnd() {
     if (touchStartY === 0) return;
+
+	if (mapSidebarEl.classList.contains('is-preview-mode')) {
+        const diffY = touchCurrentY - touchStartY;
+        if (diffY < -50) { // Als er meer dan 50px omhoog is geveegd
+            mapSidebarEl.classList.remove('is-preview-mode');
+            closePreviewCard(); // Verberg de kaart
+            // Zet de sidebar in de midden-positie
+            const targetVh = 40; 
+            mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
+            mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
+            touchStartY = 0;
+            touchCurrentY = 0;
+            return; // Stop de functie hier
+        }
+    }
     
     mapSidebarEl.style.transition = 'transform 0.3s ease-out'; // Zet de animatie weer aan
 
@@ -1513,16 +1577,7 @@ async function initializeSite() {
             const mapFilterPanel = document.querySelector('#map-view-filter-panel');
             if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
         }
-		if (mapSidebarEl) {
- 		   	const grabber = mapSidebarEl.querySelector('.mobile-grabber'); // We richten ons op de grabber
-    		const targetElement = grabber || mapSidebarEl; // Val terug op de hele sidebar als grabber niet bestaat
-
-    		targetElement.addEventListener('touchstart', handleTouchStart, { passive: false });
-    		targetElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-    		// touchend kan passief blijven, hier vindt geen default actie plaats
-    		targetElement.addEventListener('touchend', handleTouchEnd, { passive: true });
-		}
-
+		
         // Hoofdlijst Filters & Paginatie
         if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
         if (target.closest(clearAllButtonSelector)) { e.preventDefault(); handleFilterChange(true); }
@@ -1556,6 +1611,20 @@ async function initializeSite() {
                 handleSearchArea();
             }
         });
+    }
+
+	if (mapSidebarEl) {
+        // We selecteren de HELE header van de sidebar als het swipe-gebied.
+        const swipeHandle = mapSidebarEl.querySelector('.map-sidebar-header'); 
+        
+        if (swipeHandle) {
+            log("Swipe-listeners koppelen aan de sidebar header.");
+            swipeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
+            swipeHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+            swipeHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
+        } else {
+            log("WAARSCHUWING: Kon de .map-sidebar-header niet vinden om swipe-listeners te koppelen.");
+        }
     }
 
  // STAP 2: AUTHENTICATIE & DATA LADEN
