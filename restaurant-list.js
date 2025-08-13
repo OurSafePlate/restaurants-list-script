@@ -723,7 +723,7 @@ function handleMarkerClick(id) {
             // De 'scrollIntoView' methode zorgt ervoor dat de browser soepel naar het element scrollt
             listItem.scrollIntoView({
                 behavior: 'smooth', // Zorgt voor een soepele animatie
-                block: 'nearest'    // Zorgt ervoor dat het item zo min mogelijk scrollt om in beeld te komen
+                block: 'start'    // Zorgt ervoor dat het item zo min mogelijk scrollt om in beeld te komen
             });
         }
     }
