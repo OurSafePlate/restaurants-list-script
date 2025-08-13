@@ -1540,11 +1540,15 @@ async function initializeSite() {
             const mapFilterPanel = document.querySelector('#map-view-filter-panel');
             if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
         }
-		if (mapSidebarEl) {
-		    mapSidebarEl.addEventListener('touchstart', handleTouchStart, { passive: true });
-  			mapSidebarEl.addEventListener('touchmove', handleTouchMove, { passive: true });
-    		mapSidebarEl.addEventListener('touchend', handleTouchEnd, { passive: true });
-		}
+		if (mapSidebarEl && window.innerWidth <= 767) {
+        	log("Mobiel apparaat gedetecteerd. Swipe-listeners worden gekoppeld.");
+        	const swipeHandle = mapSidebarEl.querySelector('.map-sidebar-header');
+        	if (swipeHandle) {
+            	swipeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
+            	swipeHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+            	swipeHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
+        	}
+    	}
 
         // Hoofdlijst Filters & Paginatie
         if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
