@@ -729,26 +729,31 @@ function handleMarkerClick(id) {
     log(`Marker geklikt: ${id}`);
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
-    
-    // 1. Toon de preview-kaart met de data
+
+    // 1. Toon de preview-kaart met de data (dit vult de HTML)
     renderPreviewCard(restaurant);
-    
-    // 2. Zet de sidebar in de speciale 'preview-modus'
+
+    // 2. Zet de sidebar in de speciale 'preview-modus' (dit triggert de CSS animatie)
     if (mapSidebarEl) {
-        mapSidebarEl.classList.remove('is-collapsed');
         mapSidebarEl.classList.add('is-preview-mode');
     }
 
     // 3. Centreer de kaart boven de preview-kaart
     const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
-    const panOffset = (window.innerHeight / 2) - 120; // Pan omhoog, 120px is een schatting voor de helft van de preview-hoogte
     
-    map.flyTo(targetLatLng, 16);
+    map.flyTo(targetLatLng, 16); // Start de zoom-animatie
+    
     map.once('moveend', () => {
-      if (window.innerWidth <= 767) { // Alleen pannen op mobiel
-        map.panBy([0, -panOffset], { animate: true, duration: 0.25 });
-      }
-      highlightSelection(id, true);
+        if (window.innerWidth <= 767) { // Alleen pannen op mobiel
+            const previewCardVisibleHeight = 220; // Geschatte hoogte van je preview-kaart + marge
+            const mapHeight = map.getSize().y;
+            
+            // Bereken hoeveel we de kaart omhoog moeten schuiven
+            const panOffset = (mapHeight / 2) - (previewCardVisibleHeight / 2);
+            
+            map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
+        }
+        highlightSelection(id, false);
     });
 }
 
