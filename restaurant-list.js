@@ -17,6 +17,7 @@
   const NOMINATIM_GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search?format=json&q=';
   const INITIAL_COORDS = [52.3676, 4.9041]; // Amsterdam
   const INITIAL_ZOOM = 12;
+
   const parentComponentSelector = '.layout192_component';
   const showMapButtonSelector = '#show-map-button';
   const mapElementSelector = '#map';
@@ -30,12 +31,6 @@
   const filtersToggleButtonSelector = '#map-filters-toggle-button';
   const filterPanelSelector = '#map-filter-form-content';
   const mapSidebarSelector = '.map-sidebar';
-  const panelSnapPoints = {
-    collapsed: window.innerHeight - 40, // Toont alleen de grabber (40px)
-    preview: window.innerHeight - 220, // Hoogte voor de preview-kaart
-    partial: window.innerHeight * 0.6, // 40vh zichtbaar
-    full: window.innerHeight * 0.1     // 90vh zichtbaar
-   };
 
 
   // --- SELECTOREN ---
@@ -84,14 +79,6 @@
   let currentMapRestaurants = []; // Slaat de resultaten op die op de kaart getoond worden	
   let mapSidebarEl;
   let touchStartY = 0;
-
-  // --- State Management voor het Mobiele Paneel ---
-  // We definiëren de 'snap points' en de state centraal.
-  let panelState = 'collapsed';
-  let panelTouchStartY = 0;
-  let panelCurrentY = 0;
-  let initialPanelY = 0;
-
 
   // --- DOM ELEMENTEN ---
    let restaurantListWrapperEl, templateItemEl, mainSliderTemplateNodeGlobal, searchInputEl,
@@ -696,91 +683,39 @@ async function handleSearchArea() {
         console.error("Fout bij zoeken in gebied met filters:", error);
     }
 }
-
-function renderPreviewCard(restaurant) {
-    const cardContainer = document.getElementById('map-preview-card');
-    if (!cardContainer) return;
-
-    cardContainer.innerHTML = `
-        <div class="preview-card-content">
-            <div class="preview-image-wrapper">
-                <a href="/restaurants/${restaurant.slug || ''}" class="preview-image-link">
-                    <img src="${restaurant.restaurant_img_url || ''}" loading="lazy" class="preview-image">
-                </a>
-                <div class="preview-close-button" onclick="closePreviewCard(event)">×</div>
-            </div>
-            <a href="/restaurants/${restaurant.slug || ''}" class="preview-text-link">
-                <h3 class="preview-title">${restaurant.Name || 'Naam onbekend'}</h3>
-                <div class="preview-rating-line">
-                    <span style="font-weight: bold;">${restaurant.total_rating ? parseFloat(restaurant.total_rating).toFixed(1) : '-'}</span>
-                    <span>(${restaurant.review_count || 0} beoordelingen)</span>
-                </div>
-                <div class="preview-info-line">
-                    <span>${restaurant.restaurant_price || ''} • ${restaurant.restaurant_keuken || ''}</span>
-                </div>
-            </a>
-        </div>
-    `;
-}
-
-// --- FUNCTIE: SLUIT DE PREVIEW CARD ---
-function closePreviewCard(event) {
-    if (event) event.stopPropagation();
-    setPanelState('collapsed'); // Klap het paneel in
-    Object.values(markers).forEach(m => m.setZIndexOffset(0));
-}
 	
 function handleMarkerClick(id) {
+    log(`Marker geklikt: ${id}`);
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
     renderPreviewCard(restaurant);
-    setPanelState('preview'); // Zet het paneel in de preview-staat
+
+    if (mapSidebarEl) {
+        mapSidebarEl.classList.remove('is-collapsed');
+        mapSidebarEl.classList.add('is-preview-mode');
+    }
 
     const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
     map.flyTo(targetLatLng, 16);
     
     map.once('moveend', () => {
         if (window.innerWidth <= 767) {
-            const previewHeight = 220; // Hoogte uit de CSS
+            const previewHeight = 220; // Hoogte van de preview-kaart
             const mapHeight = map.getSize().y;
-            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40; // Marge
+            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40; // 40px marge
             map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
         }
     });
     highlightSelection(id, false);
 }
 
-
 function handleListItemClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
-    if (!restaurant || !restaurant.geo_location?.data || !map) return;
-
-    const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
-
-    // Bepaal de hoogte van de sidebar om de kaart te pannen
-    const sidebarRect = mapSidebarEl.getBoundingClientRect();
-    const mapRect = map.getContainer().getBoundingClientRect();
-    let panOffset = 0;
-
-    // Alleen pannen op mobiele weergave waar de sidebar onderaan zit
-    if (window.innerWidth <= 767) {
-        // We willen het centrum van het ZICHTBARE kaartgedeelte op de pin krijgen.
-        // Het zichtbare gedeelte eindigt waar de sidebar begint (sidebarRect.top).
-        // Het midden hiervan is (sidebarRect.top / 2).
-        // We moeten het doel dus omhoog pannen met (map hoogte / 2) - (zichtbare hoogte / 2).
-        panOffset = (mapRect.height / 2) - (sidebarRect.top / 2);
+    if (restaurant && restaurant.geo_location?.data && map) {
+        map.flyTo([restaurant.geo_location.data.lat, restaurant.geo_location.data.lng], 16);
+        highlightSelection(id, false);
     }
-
-    map.flyTo(targetLatLng, 16);
-    
-    // Nadat de flyTo-animatie is voltooid, pannen we de kaart iets omhoog.
-    map.once('moveend', () => {
-        if (panOffset > 0) {
-            map.panBy([0, -panOffset], { animate: true, duration: 0.25 });
-        }
-        highlightSelection(id, true); // Open de tooltip na het pannen
-    });
 }
 
 function highlightSelection(id, openTooltip = false) {
@@ -801,19 +736,23 @@ function highlightSelection(id, openTooltip = false) {
     
 function openMapOverlay() {
     log("Kaart overlay wordt geopend...");
-    if (!mapOverlay) return;
+    if (!mapOverlay) {
+        console.error("Fout: Kan het kaart-overlay element (#map-overlay) niet vinden.");
+        return;
+    }
 
     mapOverlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     
-    // Zorg ervoor dat het paneel altijd ingeklapt start
-    setPanelState('collapsed', { animate: false }); // Start zonder animatie
-    
     requestAnimationFrame(() => {
         mapOverlay.style.opacity = '1';
+
         if (!isMapInitialized) {
+            // We initialiseren de kaart nu ZONDER direct een locatie in te stellen.
+            // De locatie wordt bepaald door de geolocatie-check.
             initMap();
         } else {
+            // Als de kaart al bestaat, gewoon opnieuw tekenen.
             setTimeout(() => { if (map) map.invalidateSize(); }, 100);
         }
     });
@@ -895,7 +834,7 @@ function displayDataOnMap(restaurants) {
             }
         }
         
-        // Vul de Algemene Rating (total_rating) correct in
+        // FIX #2: Vul de Algemene Rating (total_rating) correct in
         const totalRatingValue = restaurant.total_rating; // Gebruik het correcte veld
         const totalRatingTextEl = newItem.querySelector('.restaurant-total-rating');
         if (totalRatingTextEl) {
@@ -903,7 +842,7 @@ function displayDataOnMap(restaurants) {
         }
         renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.is-quality-rating', totalRatingValue);
 
-        // Our Safe Score
+        // Our Safe Score (was al correct)
         const allergyRatingValue = restaurant.allergy_rating;
         const allergyRatingTextEl = newItem.querySelector('.restaurants_allergy_rating-overlay-rating');
         if (allergyRatingTextEl) {
@@ -963,94 +902,121 @@ function displayDataOnMap(restaurants) {
     log(`displayDataOnMap: ${restaurants.length} items succesvol toegevoegd.`);
 }
 
-// --- START SWIPE-FUNCTIES ---
+// --- START NIEUWE SWIPE-FUNCTIES ---
 
 function handleTouchStart(e) {
-    if (!mapSidebarEl) return;
-    panelTouchStartY = e.touches[0].clientY;
-    initialPanelY = mapSidebarEl.getBoundingClientRect().top;
-    mapSidebarEl.style.transition = 'none'; // Geen animatie tijdens slepen
+    // Als we swipen, is de preview-modus direct voorbij.
+    if (mapSidebarEl) mapSidebarEl.classList.remove('is-preview-mode');
+
+    // Bestaande code blijft hieronder...
+    e.preventDefault(); 
+    mapSidebarEl.style.transition = 'none';
+    touchStartY = e.touches[0].clientY;
 }
 
 function handleTouchMove(e) {
-    if (panelTouchStartY === 0) return;
-    const currentTouchY = e.touches[0].clientY;
-    let deltaY = currentTouchY - panelTouchStartY;
-    let newY = initialPanelY + deltaY;
+    if (touchStartY === 0) return;
+    touchCurrentY = e.touches[0].clientY;
 
-    // Voorkom dat je te ver sleept
-    const minDragY = panelSnapPoints.full;
-    const maxDragY = panelSnapPoints.collapsed;
-    newY = Math.max(minDragY, Math.min(newY, maxDragY));
-
-    mapSidebarEl.style.transform = `translateY(${newY}px)`;
-    panelCurrentY = newY;
-}
-
-function handleTouchEnd(e) {
-    if (panelTouchStartY === 0) return;
-    mapSidebarEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
-    const deltaY = e.changedTouches[0].clientY - panelTouchStartY;
-
-    // Bepaal de dichtstbijzijnde snap point
-    let closestState = 'collapsed';
-    let minDistance = Infinity;
-
-    for (const state in panelSnapPoints) {
-        const distance = Math.abs(panelCurrentY - panelSnapPoints[state]);
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestState = state;
-        }
-    }
-
-    // Slimme logica: als je een klein stukje in een richting veegt, ga dan naar de VOLGENDE snap point in die richting.
-    if (Math.abs(deltaY) > 50) { // Alleen als er een duidelijke veeg is
-        if (deltaY < 0) { // Omhoog vegen
-            if (panelState === 'collapsed') closestState = 'partial';
-            if (panelState === 'partial') closestState = 'full';
-        } else { // Omlaag vegen
-            if (panelState === 'full') closestState = 'partial';
-            if (panelState === 'partial') closestState = 'collapsed';
-        }
+    const diffY = touchCurrentY - touchStartY;
+    
+    // Bereken de huidige transform-positie en voeg het verschil toe
+    // Dit zorgt ervoor dat het paneel je vinger "live" volgt.
+    // We moeten de startpositie achterhalen (collapsed of niet)
+    let currentTranslateY;
+    if(mapSidebarEl.classList.contains('is-collapsed')){
+        currentTranslateY = window.innerHeight - 40;
+    } else {
+        // We moeten de huidige 'vh' omrekenen naar pixels
+        const currentVh = parseFloat(mapSidebarEl.style.getPropertyValue('--panel-height-vh') || '40');
+        currentTranslateY = window.innerHeight * (1 - currentVh / 100);
     }
     
-    // Preview-modus is speciaal: elke veegbeweging opent de lijst.
-    if (panelState === 'preview') {
-        closestState = deltaY < 0 ? 'partial' : 'collapsed';
-    }
-
-    setPanelState(closestState);
-    panelTouchStartY = 0;
+    let newY = currentTranslateY + diffY;
+    
+    // Zorg ervoor dat je het paneel niet te ver sleept
+    const minHeightPx = window.innerHeight * 0.2; // 20vh (volledig uitgeschoven)
+    const maxHeightPx = window.innerHeight - 40; // Minimale hoogte (ingeklapt)
+    newY = Math.max(minHeightPx, Math.min(newY, maxHeightPx));
+    
+    mapSidebarEl.style.transform = `translateY(${newY}px)`;
 }
 
+function handleTouchEnd() {
+    if (touchStartY === 0) return;
+    
+    mapSidebarEl.style.transition = 'transform 0.3s ease-out'; // Zet de animatie weer aan
+
+    const currentPos = mapSidebarEl.getBoundingClientRect().top;
+    const screenHeight = window.innerHeight;
+
+    // Bepaal de "snap points"
+    const snapPointHigh = screenHeight * 0.2; // 80% van het scherm zichtbaar
+    const snapPointMid = screenHeight * 0.6;  // 40% van het scherm zichtbaar
+    const snapPointLow = screenHeight - 40;   // Inklappen
+
+    // Bereken de dichtstbijzijnde snap point
+    const distances = [
+        { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
+        { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
+        { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
+    ];
+    const closest = distances.sort((a, b) => a.diff - b.diff)[0];
+
+    // Snap naar de dichtstbijzijnde positie
+    if (closest.point === snapPointLow) {
+        mapSidebarEl.classList.add('is-collapsed');
+        mapSidebarEl.style.transform = ''; // Laat CSS het overnemen
+    } else {
+        mapSidebarEl.classList.remove('is-collapsed');
+        const targetVh = (screenHeight - closest.point) / screenHeight * 100;
+        mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
+        mapSidebarEl.style.setProperty('--panel-height-vh', targetVh); // Sla de hoogte op voor de volgende drag
+    }
+
+    // Reset de posities
+    touchStartY = 0;
+    touchCurrentY = 0;
+}
 
 // --- EINDE SWIPE-FUNCTIES ---
 
-// --- Centrale functie om de paneel-positie te beheren ---
-		
-function setPanelState(newState, options = { animate: true }) {
-    if (!mapSidebarEl || window.innerWidth > 767) return;
+// --- NIEUWE: RENDER PREVIEW CARD ---
+function renderPreviewCard(restaurant) {
+    const cardContainer = document.getElementById('map-preview-card');
+    if (!cardContainer) return;
 
-    const targetY = panelSnapPoints[newState];
-    if (targetY === undefined) return;
-
-    // Beheer de transitie voor animatie
-    mapSidebarEl.style.transition = options.animate ? 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)' : 'none';
-    mapSidebarEl.style.transform = `translateY(${targetY}px)`;
-    
-    // Beheer de zichtbaarheid van de inhoud
-    if (newState === 'preview') {
-        mapSidebarEl.classList.add('is-preview-mode');
-    } else {
-        mapSidebarEl.classList.remove('is-preview-mode');
-    }
-    
-    panelState = newState;
-    panelCurrentY = targetY; // Update de huidige positie
-    log(`Panel state gezet naar: ${newState}`);
+    cardContainer.innerHTML = `
+        <div class="preview-card-content">
+            <div class="preview-image-wrapper">
+                <a href="/restaurants/${restaurant.slug || ''}" class="preview-image-link">
+                    <img src="${restaurant.restaurant_img_url || ''}" loading="lazy" class="preview-image">
+                </a>
+                <div class="preview-close-button" onclick="closePreviewCard(event)">×</div>
+            </div>
+            <a href="/restaurants/${restaurant.slug || ''}" class="preview-text-link">
+                <h3 class="preview-title">${restaurant.Name || 'Naam onbekend'}</h3>
+                <div class="preview-rating-line">
+                    <span style="font-weight: bold;">${restaurant.total_rating ? parseFloat(restaurant.total_rating).toFixed(1) : '-'}</span>
+                    <span>(${restaurant.review_count || 0} beoordelingen)</span>
+                </div>
+                <div class="preview-info-line">
+                    <span>${restaurant.restaurant_price || ''} • ${restaurant.restaurant_keuken || ''}</span>
+                </div>
+            </a>
+        </div>
+    `;
 }
 
+// --- FUNCTIE: SLUIT DE PREVIEW CARD ---
+function closePreviewCard(event) {
+    if (event) event.stopPropagation(); 
+    if (mapSidebarEl) {
+        mapSidebarEl.classList.remove('is-preview-mode');
+        mapSidebarEl.classList.add('is-collapsed'); // Klap de sidebar in na sluiten
+    }
+    Object.values(markers).forEach(m => m.setZIndexOffset(0));
+}
 	
 // --- FUNCTIE OM PAGINANUMMERS TE RENDEREN ---
 function renderPageNumbers() {
@@ -1571,7 +1537,12 @@ async function initializeSite() {
             const mapFilterPanel = document.querySelector('#map-view-filter-panel');
             if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
         }
-		
+		if (mapSidebarEl) {
+		    mapSidebarEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+  			mapSidebarEl.addEventListener('touchmove', handleTouchMove, { passive: true });
+    		mapSidebarEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+		}
+
         // Hoofdlijst Filters & Paginatie
         if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
         if (target.closest(clearAllButtonSelector)) { e.preventDefault(); handleFilterChange(true); }
@@ -1605,20 +1576,6 @@ async function initializeSite() {
                 handleSearchArea();
             }
         });
-    }
-
-	if (mapSidebarEl) {
-        // We selecteren de HELE header van de sidebar als het swipe-gebied.
-        const swipeHandle = mapSidebarEl.querySelector('.map-sidebar-header'); 
-        
-        if (swipeHandle) {
-            log("Swipe-listeners koppelen aan de sidebar header.");
-            swipeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
-            swipeHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
-            swipeHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
-        } else {
-            log("WAARSCHUWING: Kon de .map-sidebar-header niet vinden om swipe-listeners te koppelen.");
-        }
     }
 
  // STAP 2: AUTHENTICATIE & DATA LADEN
