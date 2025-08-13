@@ -692,33 +692,46 @@ function handleMarkerClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
-    // Haal de onafhankelijke preview-kaart en sidebar op
-    const previewCard = document.getElementById('map-preview-card');
-    if (!previewCard || !mapSidebarEl) return;
+    // --- START VAN DE DESKTOP vs MOBIEL LOGICA ---
 
-    // 1. Vul de preview-kaart met de restaurantdata
-    renderPreviewCard(restaurant);
+    if (window.innerWidth <= 767) {
+        // --- MOBIELE LOGICA: Toon de preview-kaart ---
+        
+        renderPreviewCard(restaurant); // Vul de HTML
 
-    // 2. Maak de preview-kaart zichtbaar met de 'is-visible' class
-    previewCard.classList.add('is-visible');
-    
-    // 3. Verberg de lijst-sidebar met de 'is-hidden-by-preview' class
-    mapSidebarEl.classList.add('is-hidden-by-preview');
+        // Toon de preview-kaart en verberg de lijst-sidebar
+        document.getElementById('map-preview-card').classList.add('is-visible');
+        mapSidebarEl.classList.add('is-hidden-by-preview');
 
-    // 4. Centreer de kaart boven de preview-kaart
-    const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
-    map.flyTo(targetLatLng, 16);
-    
-    map.once('moveend', () => {
-        if (window.innerWidth <= 767) {
-            const previewHeight = 220; // De geschatte hoogte van je preview-kaart
+        const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
+        map.flyTo(targetLatLng, 16);
+        
+        map.once('moveend', () => {
+            const previewHeight = 220;
             const mapHeight = map.getSize().y;
-            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40; // 40px extra marge
+            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40;
             map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
+        });
+        
+    } else {
+        // --- DESKTOP LOGICA: Scroll naar het item in de lijst ---
+        
+        // Zoek het specifieke restaurant-item in de lijst
+        const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
+        
+        if (listItem) {
+            // De 'scrollIntoView' methode zorgt ervoor dat de browser soepel naar het element scrollt
+            listItem.scrollIntoView({
+                behavior: 'smooth', // Zorgt voor een soepele animatie
+                block: 'nearest'    // Zorgt ervoor dat het item zo min mogelijk scrollt om in beeld te komen
+            });
         }
-    });
-
-    highlightSelection(id, false);
+    }
+    
+    // --- EINDE VAN DE LOGICA ---
+    
+    // Deze functie wordt voor beide uitgevoerd om de highlight en tooltip te beheren
+    highlightSelection(id, true); // De 'true' zorgt ervoor dat de tooltip opent op de marker
 }
 
 function handleListItemClick(id) {
