@@ -989,23 +989,45 @@ function handleTouchEnd() {
 
 // --- EINDE SWIPE-FUNCTIES ---
 
-// --- NIEUWE: RENDER PREVIEW CARD ---
+// --- RENDER PREVIEW CARD ---
 function renderPreviewCard(restaurant) {
     const cardContainer = document.getElementById('map-preview-card');
     if (!cardContainer) return;
 
+    // Genereer de nieuwe, uitgebreide HTML. 
+    // Ik heb de structuren uit uw voorbeeld exact overgenomen.
     cardContainer.innerHTML = `
         <div class="preview-card-content">
             <div class="preview-image-wrapper">
                 <a href="/restaurants/${restaurant.slug || ''}" class="preview-image-link">
                     <img src="${restaurant.restaurant_img_url || ''}" loading="lazy" class="preview-image">
                 </a>
-                <div class="preview-close-button" onclick="closePreviewCard(event)">×</div>
+                
+                <!-- De close-knop met de afbeelding erin -->
+                <div class="preview-close-button" onclick="closePreviewCard(event)">
+                    <img src="URL_VAN_JE_CLOSE_ICOON.svg" alt="Sluiten" class="preview-close-icon">
+                </div>
+
+                <!-- De "Our Safe Score" overlay -->
+                <div class="restaurants_allergy_rating-overlay">
+                    <div class="restaurants_allergy_rating-overlay-rating">${restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-'}</div>
+                    <div class="restaurants_rating-star-wrap restaurants_rating_allergy-wrap gap-custom">
+                        <!-- De 5 sterren/bolletjes worden hier door de renderRatingVisuals functie gevuld -->
+                    </div>
+                    <div class="restaurants_allergy_rating-overlay-body">Our Safe Score</div>
+                </div>
             </div>
+
             <a href="/restaurants/${restaurant.slug || ''}" class="preview-text-link">
                 <h3 class="preview-title">${restaurant.Name || 'Naam onbekend'}</h3>
                 <div class="preview-rating-line">
                     <span style="font-weight: bold;">${restaurant.total_rating ? parseFloat(restaurant.total_rating).toFixed(1) : '-'}</span>
+                    
+                    <!-- De container voor de rating "bolletjes" -->
+                    <div class="restaurants_rating-star-wrap is-quality-rating">
+                        <!-- De 5 sterren/bolletjes worden hier door de renderRatingVisuals functie gevuld -->
+                    </div>
+                    
                     <span>(${restaurant.review_count || 0} beoordelingen)</span>
                 </div>
                 <div class="preview-info-line">
@@ -1014,6 +1036,35 @@ function renderPreviewCard(restaurant) {
             </a>
         </div>
     `;
+    
+    // BELANGRIJK: Roep nu je bestaande renderRatingVisuals functie aan om de bolletjes te vullen.
+    // We moeten dit doen voor beide sets bolletjes.
+    
+    // Vul de bolletjes voor de ALGEMENE RATING
+    const qualityRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.is-quality-rating');
+    if (qualityRatingContainer) {
+        // We creëren de 5 divs voor de bolletjes
+        for (let i = 0; i < 5; i++) {
+            const starDiv = document.createElement('div');
+            starDiv.className = 'restaurants_rating-star is-quality-rating';
+            qualityRatingContainer.appendChild(starDiv);
+        }
+        // Nu vullen we ze
+        renderRatingVisuals(qualityRatingContainer, '.restaurants_rating-star', restaurant.total_rating);
+    }
+    
+    // Vul de bolletjes voor de OUR SAFE SCORE
+    const allergyRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap');
+    if (allergyRatingContainer) {
+        // We creëren de 5 divs voor de bolletjes
+        for (let i = 0; i < 5; i++) {
+            const starDiv = document.createElement('div');
+            starDiv.className = 'restaurants_rating-star restaurants_allergy_rating-overlay-star';
+            allergyRatingContainer.appendChild(starDiv);
+        }
+        // Nu vullen we ze
+        renderRatingVisuals(allergyRatingContainer, '.restaurants_rating-star', restaurant.allergy_rating);
+    }
 }
 
 // --- FUNCTIE: SLUIT DE PREVIEW CARD ---
