@@ -688,25 +688,36 @@ async function handleSearchArea() {
 }
 	
 function handleMarkerClick(id) {
+    log(`Marker geklikt: ${id}`);
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
-    renderPreviewCard(restaurant); // Vul de HTML
+    // Haal de onafhankelijke preview-kaart en sidebar op
+    const previewCard = document.getElementById('map-preview-card');
+    if (!previewCard || !mapSidebarEl) return;
 
-    // Toon de preview-kaart en verberg de lijst-sidebar
-    document.getElementById('map-preview-card').classList.add('is-visible');
-    mapSidebarEl.classList.add('is-hidden');
+    // 1. Vul de preview-kaart met de restaurantdata
+    renderPreviewCard(restaurant);
 
+    // 2. Maak de preview-kaart zichtbaar met de 'is-visible' class
+    previewCard.classList.add('is-visible');
+    
+    // 3. Verberg de lijst-sidebar met de 'is-hidden-by-preview' class
+    mapSidebarEl.classList.add('is-hidden-by-preview');
+
+    // 4. Centreer de kaart boven de preview-kaart
     const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
     map.flyTo(targetLatLng, 16);
+    
     map.once('moveend', () => {
         if (window.innerWidth <= 767) {
-            const previewHeight = 220;
+            const previewHeight = 220; // De geschatte hoogte van je preview-kaart
             const mapHeight = map.getSize().y;
-            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40;
+            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40; // 40px extra marge
             map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
         }
     });
+
     highlightSelection(id, false);
 }
 
@@ -995,11 +1006,18 @@ function renderPreviewCard(restaurant) {
 // --- FUNCTIE: SLUIT DE PREVIEW CARD ---
 function closePreviewCard(event) {
     if (event) event.stopPropagation();
+
+    // Haal de onafhankelijke preview-kaart en sidebar op
+    const previewCard = document.getElementById('map-preview-card');
+    if (!previewCard || !mapSidebarEl) return;
+
+    // 1. Verberg de preview-kaart
+    previewCard.classList.remove('is-visible');
     
-    // Verberg de preview-kaart en toon de lijst-sidebar weer (in de 'collapsed' staat)
-    document.getElementById('map-preview-card').classList.remove('is-visible');
-    mapSidebarEl.classList.remove('is-hidden');
+    // 2. Toon de lijst-sidebar weer (deze zal in zijn laatste staat zijn, meestal 'collapsed')
+    mapSidebarEl.classList.remove('is-hidden-by-preview');
     
+    // 3. Deselecteer de marker
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
 }
 	
