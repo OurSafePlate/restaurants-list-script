@@ -17,7 +17,6 @@
   const NOMINATIM_GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search?format=json&q=';
   const INITIAL_COORDS = [52.3676, 4.9041]; // Amsterdam
   const INITIAL_ZOOM = 12;
-
   const parentComponentSelector = '.layout192_component';
   const showMapButtonSelector = '#show-map-button';
   const mapElementSelector = '#map';
@@ -714,15 +713,21 @@ function renderPreviewCard(restaurant) {
 }
 
 // --- NIEUWE FUNCTIE: SLUIT DE PREVIEW CARD ---
-function closePreviewCard() {
+function closePreviewCard(event) {
+    if (event) event.stopPropagation(); 
+
+    // Verberg de inhoud van de kaart
     const cardContainer = document.getElementById('map-preview-card');
     if (cardContainer) cardContainer.style.display = 'none';
+    
+    // Zet de sidebar terug in de ingeklapte staat
     if (mapSidebarEl) {
         mapSidebarEl.classList.remove('is-preview-mode');
-        mapSidebarEl.classList.add('is-collapsed'); // Verberg de sidebar weer
+        mapSidebarEl.classList.add('is-collapsed');
     }
+    
     // Deselecteer alle markers
-     Object.values(markers).forEach(m => m.setZIndexOffset(0));
+    Object.values(markers).forEach(m => m.setZIndexOffset(0));
 }
 	
 function handleMarkerClick(id) {
@@ -730,27 +735,25 @@ function handleMarkerClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
-    // 1. Toon de preview-kaart met de data (dit vult de HTML)
+    // Vul de preview-kaart met de data
     renderPreviewCard(restaurant);
 
-    // 2. Zet de sidebar in de speciale 'preview-modus' (dit triggert de CSS animatie)
+    // Zet de sidebar in de speciale 'preview-modus'
     if (mapSidebarEl) {
+        mapSidebarEl.classList.remove('is-collapsed');
         mapSidebarEl.classList.add('is-preview-mode');
     }
 
-    // 3. Centreer de kaart boven de preview-kaart
+    // Centreer de kaart boven de preview-kaart
     const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
     
-    map.flyTo(targetLatLng, 16); // Start de zoom-animatie
+    map.flyTo(targetLatLng, 16);
     
     map.once('moveend', () => {
-        if (window.innerWidth <= 767) { // Alleen pannen op mobiel
-            const previewCardVisibleHeight = 220; // Geschatte hoogte van je preview-kaart + marge
+        if (window.innerWidth <= 767) {
+            const previewHeight = 220; // De hoogte die je in de CSS hebt ingesteld
             const mapHeight = map.getSize().y;
-            
-            // Bereken hoeveel we de kaart omhoog moeten schuiven
-            const panOffset = (mapHeight / 2) - (previewCardVisibleHeight / 2);
-            
+            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 30; // 30px extra marge
             map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
         }
         highlightSelection(id, false);
@@ -1011,52 +1014,48 @@ function handleTouchMove(e) {
 
 function handleTouchEnd() {
     if (touchStartY === 0) return;
+    
+    const diffY = touchCurrentY - touchStartY;
 
-	if (mapSidebarEl.classList.contains('is-preview-mode')) {
-        const diffY = touchCurrentY - touchStartY;
-        if (diffY < -50) { // Als er meer dan 50px omhoog is geveegd
-            mapSidebarEl.classList.remove('is-preview-mode');
-            closePreviewCard(); // Verberg de kaart
-            // Zet de sidebar in de midden-positie
-            const targetVh = 40; 
+    // BELANGRIJK: Als we in preview-modus zijn en omhoog swipen, open de lijst.
+    if (mapSidebarEl.classList.contains('is-preview-mode') && diffY < -50) {
+        mapSidebarEl.classList.remove('is-preview-mode');
+        mapSidebarEl.classList.remove('is-collapsed'); 
+        // Forceer de transform naar de middenpositie
+        const targetVh = 40; 
+        mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
+        mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
+    } else {
+        // Anders, gebruik de normale snap-logica
+        mapSidebarEl.style.transition = 'transform 0.3s ease-out';
+        const currentPos = mapSidebarEl.getBoundingClientRect().top;
+        const screenHeight = window.innerHeight;
+
+        const snapPointHigh = screenHeight * 0.2; // 80vh
+        const snapPointMid = screenHeight * 0.6;  // 40vh
+        const snapPointLow = screenHeight - 40;   // Inklappen
+
+        const distances = [
+            { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
+            { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
+            { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
+        ];
+        const closest = distances.sort((a, b) => a.diff - b.diff)[0];
+
+        // Verwijder altijd de preview-modus als we swipen
+        mapSidebarEl.classList.remove('is-preview-mode');
+
+        if (closest.point === snapPointLow) {
+            mapSidebarEl.classList.add('is-collapsed');
+            mapSidebarEl.style.transform = ''; // Laat CSS de ingeklapte state regelen
+        } else {
+            mapSidebarEl.classList.remove('is-collapsed');
+            const targetVh = (screenHeight - closest.point) / screenHeight * 100;
             mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
             mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
-            touchStartY = 0;
-            touchCurrentY = 0;
-            return; // Stop de functie hier
         }
     }
-    
-    mapSidebarEl.style.transition = 'transform 0.3s ease-out'; // Zet de animatie weer aan
 
-    const currentPos = mapSidebarEl.getBoundingClientRect().top;
-    const screenHeight = window.innerHeight;
-
-    // Bepaal de "snap points"
-    const snapPointHigh = screenHeight * 0.2; // 80% van het scherm zichtbaar
-    const snapPointMid = screenHeight * 0.6;  // 40% van het scherm zichtbaar
-    const snapPointLow = screenHeight - 40;   // Inklappen
-
-    // Bereken de dichtstbijzijnde snap point
-    const distances = [
-        { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
-        { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
-        { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
-    ];
-    const closest = distances.sort((a, b) => a.diff - b.diff)[0];
-
-    // Snap naar de dichtstbijzijnde positie
-    if (closest.point === snapPointLow) {
-        mapSidebarEl.classList.add('is-collapsed');
-        mapSidebarEl.style.transform = ''; // Laat CSS het overnemen
-    } else {
-        mapSidebarEl.classList.remove('is-collapsed');
-        const targetVh = (screenHeight - closest.point) / screenHeight * 100;
-        mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
-        mapSidebarEl.style.setProperty('--panel-height-vh', targetVh); // Sla de hoogte op voor de volgende drag
-    }
-
-    // Reset de posities
     touchStartY = 0;
     touchCurrentY = 0;
 }
