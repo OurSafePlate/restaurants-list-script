@@ -705,10 +705,33 @@ function handleMarkerClick(id) {
 
 function handleListItemClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
-    if (restaurant && restaurant.geo_location?.data && map) {
-        map.flyTo([restaurant.geo_location.data.lat, restaurant.geo_location.data.lng], 16);
-        highlightSelection(id, false);
+    if (!restaurant || !restaurant.geo_location?.data || !map) return;
+
+    const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
+
+    // Bepaal de hoogte van de sidebar om de kaart te pannen
+    const sidebarRect = mapSidebarEl.getBoundingClientRect();
+    const mapRect = map.getContainer().getBoundingClientRect();
+    let panOffset = 0;
+
+    // Alleen pannen op mobiele weergave waar de sidebar onderaan zit
+    if (window.innerWidth <= 767) {
+        // We willen het centrum van het ZICHTBARE kaartgedeelte op de pin krijgen.
+        // Het zichtbare gedeelte eindigt waar de sidebar begint (sidebarRect.top).
+        // Het midden hiervan is (sidebarRect.top / 2).
+        // We moeten het doel dus omhoog pannen met (map hoogte / 2) - (zichtbare hoogte / 2).
+        panOffset = (mapRect.height / 2) - (sidebarRect.top / 2);
     }
+
+    map.flyTo(targetLatLng, 16);
+    
+    // Nadat de flyTo-animatie is voltooid, pannen we de kaart iets omhoog.
+    map.once('moveend', () => {
+        if (panOffset > 0) {
+            map.panBy([0, -panOffset], { animate: true, duration: 0.25 });
+        }
+        highlightSelection(id, true); // Open de tooltip na het pannen
+    });
 }
 
 function highlightSelection(id, openTooltip = false) {
@@ -1491,9 +1514,13 @@ async function initializeSite() {
             if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
         }
 		if (mapSidebarEl) {
-		    mapSidebarEl.addEventListener('touchstart', handleTouchStart, { passive: true });
-  			mapSidebarEl.addEventListener('touchmove', handleTouchMove, { passive: true });
-    		mapSidebarEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+ 		   	const grabber = mapSidebarEl.querySelector('.mobile-grabber'); // We richten ons op de grabber
+    		const targetElement = grabber || mapSidebarEl; // Val terug op de hele sidebar als grabber niet bestaat
+
+    		targetElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+    		targetElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+    		// touchend kan passief blijven, hier vindt geen default actie plaats
+    		targetElement.addEventListener('touchend', handleTouchEnd, { passive: true });
 		}
 
         // Hoofdlijst Filters & Paginatie
