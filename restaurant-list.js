@@ -716,14 +716,13 @@ function handleMarkerClick(id) {
         }
     });
 
-    highlightSelection(id, false);
+     // Deze functie wordt voor beide uitgevoerd om de highlight en tooltip te beheren
+    highlightSelection(id, true); // De 'true' zorgt ervoor dat de tooltip opent op de marker
 }
+
     
     // --- EINDE VAN DE LOGICA ---
     
-    // Deze functie wordt voor beide uitgevoerd om de highlight en tooltip te beheren
-    highlightSelection(id, true); // De 'true' zorgt ervoor dat de tooltip opent op de marker
-}
 
 function handleListItemClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
