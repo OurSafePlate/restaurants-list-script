@@ -738,11 +738,12 @@ function openMapOverlay() {
     
     if (mapSidebarEl) {
         mapSidebarEl.classList.remove('is-hidden-by-preview');
-        // DIT IS DE FIX: Forceer de 'ingeklapte' staat bij het openen.
         mapSidebarEl.classList.add('is-collapsed');
-        // Verwijder inline styles zodat de CSS-klasse de controle heeft.
         mapSidebarEl.style.transform = '';
         mapSidebarEl.style.removeProperty('--panel-height-vh');
+        
+        // DE FIX: Synchroniseer de globale state met de visuele staat.
+        panelState = 'collapsed';
     }
     
     requestAnimationFrame(() => {
@@ -751,6 +752,7 @@ function openMapOverlay() {
         else { setTimeout(() => map && map.invalidateSize(), 100); }
     });
 }
+
 
 function closeMapOverlay() {
     log("Kaart overlay sluiten...");
@@ -966,19 +968,16 @@ function renderPreviewCard(restaurant) {
     const cardContainer = document.getElementById('map-preview-card');
     if (!cardContainer) return;
 
-    // Stap 1: Genereer de HTML, maar ZONDER de onclick="..."
+    // Stap 1: Genereer de HTML
     cardContainer.innerHTML = `
         <div class="preview-card-content">
             <div class="preview-image-wrapper">
                 <a href="/restaurants/${restaurant.slug || ''}" class="preview-image-link">
                     <img src="${restaurant.restaurant_img_url || ''}" loading="lazy" class="preview-image">
                 </a>
-                
-                <!-- De close-knop heeft nu geen onclick meer -->
                 <div class="preview-close-button">
                     <img src="https://uploads-ssl.webflow.com/67ec1f5e9ca7126309c2348f/67f63683e732aa82cb556cb0_Ontwerp%20zonder%20titel%20(7).png" alt="Sluiten" class="preview-close-icon">
                 </div>
-
                 <div class="restaurants_allergy_rating-overlay">
                     <div class="restaurants_allergy_rating-overlay-rating">${restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-'}</div>
                     <div class="restaurants_rating-star-wrap restaurants_rating_allergy_wrap gap-custom"></div>
@@ -999,16 +998,32 @@ function renderPreviewCard(restaurant) {
         </div>
     `;
 
-    // Stap 2: Voeg de bolletjes dynamisch toe (deze code was al correct)
+    // DE FIX: Voeg de lege bolletje-divs dynamisch toe
     const qualityRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.is-quality-rating');
-    const allergyRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap');
-    if (qualityRatingContainer) { /* ... uw werkende code om bolletjes te vullen ... */ }
-    if (allergyRatingContainer) { /* ... uw werkende code om bolletjes te vullen ... */ }
+    const allergyRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.restaurants_rating_allergy_wrap');
+
+    if (qualityRatingContainer) {
+        qualityRatingContainer.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            const starDiv = document.createElement('div');
+            starDiv.className = 'restaurants_rating-star is-quality-rating';
+            qualityRatingContainer.appendChild(starDiv);
+        }
+    }
+    if (allergyRatingContainer) {
+        allergyRatingContainer.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            const starDiv = document.createElement('div');
+            starDiv.className = 'restaurants_rating-star restaurants_allergy_rating-overlay-star';
+            allergyRatingContainer.appendChild(starDiv);
+        }
+    }
+    
+    // Roep de renderRatingVisuals functie aan (dit was al correct)
     renderRatingVisuals(cardContainer, '.restaurants_rating-star-wrap.is-quality-rating', restaurant.total_rating);
     renderRatingVisuals(cardContainer, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', restaurant.allergy_rating);
 
-    // --- DE CRUCIALE WIJZIGING ---
-    // Stap 3: Zoek de zojuist aangemaakte sluitknop en voeg een betrouwbare Event Listener toe.
+    // Voeg de event listener toe (dit was al correct)
     const closeButton = cardContainer.querySelector('.preview-close-button');
     if (closeButton) {
         closeButton.addEventListener('click', closePreviewCard);
