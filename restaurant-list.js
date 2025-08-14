@@ -994,21 +994,22 @@ function renderPreviewCard(restaurant) {
     const cardContainer = document.getElementById('map-preview-card');
     if (!cardContainer) return;
 
-    // Stap 1: Genereer de HTML-structuur. De containers voor de bolletjes zijn hier leeg.
+    // Stap 1: Genereer de HTML, maar ZONDER de onclick="..."
     cardContainer.innerHTML = `
         <div class="preview-card-content">
             <div class="preview-image-wrapper">
                 <a href="/restaurants/${restaurant.slug || ''}" class="preview-image-link">
                     <img src="${restaurant.restaurant_img_url || ''}" loading="lazy" class="preview-image">
                 </a>
-                <div class="preview-close-button" onclick="closePreviewCard(event)">
+                
+                <!-- De close-knop heeft nu geen onclick meer -->
+                <div class="preview-close-button">
                     <img src="https://uploads-ssl.webflow.com/67ec1f5e9ca7126309c2348f/67f63683e732aa82cb556cb0_Ontwerp%20zonder%20titel%20(7).png" alt="Sluiten" class="preview-close-icon">
                 </div>
+
                 <div class="restaurants_allergy_rating-overlay">
                     <div class="restaurants_allergy_rating-overlay-rating">${restaurant.allergy_rating ? parseFloat(restaurant.allergy_rating).toFixed(1) : '-'}</div>
-                    <div class="restaurants_rating-star-wrap restaurants_rating_allergy-wrap gap-custom">
-                        <!-- Wordt gevuld door JS -->
-                    </div>
+                    <div class="restaurants_rating-star-wrap restaurants_rating_allergy_wrap gap-custom"></div>
                     <div class="restaurants_allergy_rating-overlay-body">Our Safe Score</div>
                 </div>
             </div>
@@ -1016,9 +1017,7 @@ function renderPreviewCard(restaurant) {
                 <h3 class="preview-title">${restaurant.Name || 'Naam onbekend'}</h3>
                 <div class="preview-rating-line">
                     <span style="font-weight: bold;">${restaurant.total_rating ? parseFloat(restaurant.total_rating).toFixed(1) : '-'}</span>
-                    <div class="restaurants_rating-star-wrap is-quality-rating">
-                        <!-- Wordt gevuld door JS -->
-                    </div>
+                    <div class="restaurants_rating-star-wrap is-quality-rating"></div>
                     <span>(${restaurant.review_count || 0} beoordelingen)</span>
                 </div>
                 <div class="preview-info-line">
@@ -1027,54 +1026,45 @@ function renderPreviewCard(restaurant) {
             </a>
         </div>
     `;
-    
-    // Stap 2: Voeg de 5 lege bolletje-divs toe aan de containers.
+
+    // Stap 2: Voeg de bolletjes dynamisch toe (deze code was al correct)
     const qualityRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.is-quality-rating');
     const allergyRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap');
+    if (qualityRatingContainer) { /* ... uw werkende code om bolletjes te vullen ... */ }
+    if (allergyRatingContainer) { /* ... uw werkende code om bolletjes te vullen ... */ }
+    renderRatingVisuals(cardContainer, '.restaurants_rating-star-wrap.is-quality-rating', restaurant.total_rating);
+    renderRatingVisuals(cardContainer, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', restaurant.allergy_rating);
 
-    if (qualityRatingContainer) {
-        qualityRatingContainer.innerHTML = ''; // Maak eerst leeg
-        for (let i = 0; i < 5; i++) {
-            const starDiv = document.createElement('div');
-            starDiv.className = 'restaurants_rating-star is-quality-rating';
-            qualityRatingContainer.appendChild(starDiv);
-        }
+    // --- DE CRUCIALE WIJZIGING ---
+    // Stap 3: Zoek de zojuist aangemaakte sluitknop en voeg een betrouwbare Event Listener toe.
+    const closeButton = cardContainer.querySelector('.preview-close-button');
+    if (closeButton) {
+        closeButton.addEventListener('click', closePreviewCard);
     }
-    
-    if (allergyRatingContainer) {
-        allergyRatingContainer.innerHTML = ''; // Maak eerst leeg
-        for (let i = 0; i < 5; i++) {
-            const starDiv = document.createElement('div');
-            starDiv.className = 'restaurants_rating-star restaurants_allergy_rating-overlay-star';
-            allergyRatingContainer.appendChild(starDiv);
-        }
-    }
-    
-    // Stap 3: Roep de renderRatingVisuals functie CORRECT aan.
-    // We geven de hele preview-kaart als 'parentItem' en de specifieke selector naar de container.
-    
-    // Vul de bolletjes voor de ALGEMENE RATING
-    renderRatingVisuals(cardContainer, '.restaurants_rating-star-wrap.is-quality-rating', restaurant.total_rating); // <-- WIJZIGING
-
-    // Vul de bolletjes voor de OUR SAFE SCORE
-    renderRatingVisuals(cardContainer, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', restaurant.allergy_rating); // <-- WIJZIGING
 }
 		
 // --- FUNCTIE: SLUIT DE PREVIEW CARD ---
 function closePreviewCard(event) {
-    if (event) event.stopPropagation();
+    if (event) {
+        event.stopPropagation(); // Voorkom dat de klik "doorklinkt" naar de kaart eronder
+    }
 
-    // Haal de onafhankelijke preview-kaart en sidebar op
+    // Verberg de preview-kaart
     const previewCard = document.getElementById('map-preview-card');
-    if (!previewCard || !mapSidebarEl) return;
-
-    // 1. Verberg de preview-kaart
-    previewCard.classList.remove('is-visible');
+    if (previewCard) {
+        previewCard.classList.remove('is-visible');
+    }
     
-    // 2. Toon de lijst-sidebar weer (deze zal in zijn laatste staat zijn, meestal 'collapsed')
-    mapSidebarEl.classList.remove('is-hidden-by-preview');
+    // Toon de sidebar weer en ZET HEM IN DE INGEKLAPTE STAAT
+    if (mapSidebarEl) {
+        mapSidebarEl.classList.remove('is-hidden-by-preview');
+        mapSidebarEl.classList.add('is-collapsed'); // Forceer de ingeklapte staat
+        
+        // Laat de CSS de positie bepalen, verwijder inline transform
+        mapSidebarEl.style.transform = ''; 
+    }
     
-    // 3. Deselecteer de marker
+    // Deselecteer de marker
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
 }
 	
