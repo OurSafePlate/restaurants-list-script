@@ -1503,8 +1503,8 @@ async function fetchAndDisplayMainList() {
 async function initializeSite() {
     log("Site initialisatie gestart.");
 
-    // STAP 1: KOPPEL ALLE DOM ELEMENTEN
-    log("DOM elementen koppelen...");
+    // STAP 1: KOPPEL ALLE DOM ELEMENTEN (ongewijzigd)
+    // ... (uw querySelectors blijven hier ongewijzigd) ...
     restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
     templateItemEl = document.querySelector(templateItemSelector);
     mainSliderTemplateNodeGlobal = document.querySelector(mainSliderTemplateSelector);
@@ -1525,17 +1525,16 @@ async function initializeSite() {
     finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector);
     searchAreaButton = document.querySelector(searchAreaButtonSelector);
 	mapSidebarEl = document.querySelector(mapSidebarSelector);
-    
+
     if (!restaurantListWrapperEl) return console.error("Hoofdlijst wrapper niet gevonden!");
     if (templateItemEl) templateItemEl.style.display = 'none';
 
-    // STAP 2: KOPPEL ALLE EVENT LISTENERS
-    log("Event listeners koppelen via event delegation...");
+    // STAP 2: KOPPEL EVENT LISTENERS
+    log("Event listeners koppelen...");
 
+    // ALGEMENE CLICK LISTENER (voor clicks, niet voor initialisatie)
     document.body.addEventListener('click', (e) => {
         const target = e.target;
-
-        // Kaart Overlay
         if (target.closest(showMapButtonSelector)) { e.preventDefault(); openMapOverlay(); }
         if (target.closest(closeMapButtonSelector)) { e.preventDefault(); closeMapOverlay(); }
         if (target.closest(searchAreaButtonSelector)) { e.preventDefault(); handleSearchArea(); }
@@ -1544,22 +1543,10 @@ async function initializeSite() {
             const mapFilterPanel = document.querySelector('#map-view-filter-panel');
             if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
         }
-		if (mapSidebarEl && window.innerWidth <= 767) {
-        	log("Mobiel apparaat gedetecteerd. Swipe-listeners worden gekoppeld.");
-        	const swipeHandle = mapSidebarEl.querySelector('.map-sidebar-header');
-        	if (swipeHandle) {
-            	swipeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
-            	swipeHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
-            	swipeHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
-        	}
-    	}
-
-        // Hoofdlijst Filters & Paginatie
         if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
         if (target.closest(clearAllButtonSelector)) { e.preventDefault(); handleFilterChange(true); }
         if (target.closest(openFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.add('is-open'); }
         if (target.closest(closeFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.remove('is-open'); }
-
         const pageButton = target.closest('[data-page]');
         if (pageButton) {
             e.preventDefault();
@@ -1570,6 +1557,17 @@ async function initializeSite() {
         if (target.closest(paginationNextButtonSelector)) { e.preventDefault(); if (currentPage < totalPages && !isLoading) { currentPage++; fetchAndDisplayMainList(); } }
     });
 
+    // --- DE FIX: DE SWIPE-INITIALISATIE WORDT HIER EENMALIG UITGEVOERD ---
+    // Dit blok is uit de click-listener gehaald en hier geplaatst.
+    if (mapSidebarEl && window.innerWidth <= 767) {
+        log("Mobiel apparaat gedetecteerd. Swipe-listeners worden EENMALIG gekoppeld.");
+        const swipeHandle = mapSidebarEl.querySelector('.map-sidebar-header');
+        if (swipeHandle) {
+            swipeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
+            swipeHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+            swipeHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
+        }
+    }
     // Aparte listeners voor 'input' en 'change'
     if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
     const mainFilterForm = document.querySelector('#filter-form');
