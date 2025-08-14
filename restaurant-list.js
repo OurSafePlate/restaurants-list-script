@@ -692,41 +692,32 @@ function handleMarkerClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
-    // --- START VAN DE DESKTOP vs MOBIEL LOGICA ---
+    // Haal de onafhankelijke elementen op
+    const previewCard = document.getElementById('map-preview-card');
+    if (!previewCard || !mapSidebarEl) return;
 
-    if (window.innerWidth <= 767) {
-        // --- MOBIELE LOGICA: Toon de preview-kaart ---
-        
-        renderPreviewCard(restaurant); // Vul de HTML
+    // Vul de preview-kaart met de restaurantdata
+    renderPreviewCard(restaurant);
 
-        // Toon de preview-kaart en verberg de lijst-sidebar
-        document.getElementById('map-preview-card').classList.add('is-visible');
-        mapSidebarEl.classList.add('is-hidden-by-preview');
+    // Maak de preview-kaart zichtbaar en verberg de lijst-sidebar
+    previewCard.classList.add('is-visible');
+    mapSidebarEl.classList.add('is-hidden-by-preview');
 
-        const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
-        map.flyTo(targetLatLng, 16);
-        
-        map.once('moveend', () => {
+    // Centreer de kaart boven de preview-kaart
+    const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
+    map.flyTo(targetLatLng, 16);
+    
+    map.once('moveend', () => {
+        if (window.innerWidth <= 767) {
             const previewHeight = 220;
             const mapHeight = map.getSize().y;
             const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40;
             map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
-        });
-        
-    } else {
-        // --- DESKTOP LOGICA: Scroll naar het item in de lijst ---
-        
-        // Zoek het specifieke restaurant-item in de lijst
-        const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
-        
-        if (listItem) {
-            // De 'scrollIntoView' methode zorgt ervoor dat de browser soepel naar het element scrollt
-            listItem.scrollIntoView({
-                behavior: 'smooth', // Zorgt voor een soepele animatie
-                block: 'start'    // Zorgt ervoor dat het item zo min mogelijk scrollt om in beeld te komen
-            });
         }
-    }
+    });
+
+    highlightSelection(id, false);
+}
     
     // --- EINDE VAN DE LOGICA ---
     
@@ -1046,25 +1037,21 @@ function renderPreviewCard(restaurant) {
 // --- FUNCTIE: SLUIT DE PREVIEW CARD ---
 function closePreviewCard(event) {
     if (event) {
-        event.stopPropagation(); // Voorkom dat de klik "doorklinkt" naar de kaart eronder
+        event.stopPropagation();
     }
-
-    // Verberg de preview-kaart
+    
     const previewCard = document.getElementById('map-preview-card');
     if (previewCard) {
         previewCard.classList.remove('is-visible');
     }
     
-    // Toon de sidebar weer en ZET HEM IN DE INGEKLAPTE STAAT
+    // BELANGRIJK: We halen alleen de 'hidden' class weg.
+    // De sidebar zal nu verschijnen op exact de positie waar hij was
+    // (met de inline transform-stijl die uw swipe-functies hebben ingesteld).
     if (mapSidebarEl) {
         mapSidebarEl.classList.remove('is-hidden-by-preview');
-        mapSidebarEl.classList.add('is-collapsed'); // Forceer de ingeklapte staat
-        
-        // Laat de CSS de positie bepalen, verwijder inline transform
-        mapSidebarEl.style.transform = ''; 
     }
     
-    // Deselecteer de marker
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
 }
 	
