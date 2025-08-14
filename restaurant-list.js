@@ -693,24 +693,14 @@ function handleMarkerClick(id) {
 
     renderPreviewCard(restaurant);
 
-    // Toon de preview-kaart
     document.getElementById('map-preview-card').classList.add('is-visible');
-    
-    // Verberg de sidebar en verwijder de 'collapsed' state
-    if (mapSidebarEl) {
-        mapSidebarEl.classList.add('is-hidden-by-preview');
-        mapSidebarEl.classList.remove('is-collapsed'); // Belangrijk voor state-consistentie
-    }
+    mapSidebarEl.classList.add('is-hidden-by-preview');
 
-    // De rest van de functie blijft ongewijzigd...
     const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
     map.flyTo(targetLatLng, 16);
     map.once('moveend', () => { /* ... uw pan-logica ... */ });
     highlightSelection(id, false);
-}
-
-
-    
+}   
 
 function handleListItemClick(id) {
     const restaurant = currentMapRestaurants.find(r => r.id === id);
@@ -743,25 +733,22 @@ function openMapOverlay() {
     mapOverlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
-    // Reset de staten en forceer de correcte startpositie
+    // Reset alle staten naar de beginpositie
+    document.getElementById('map-preview-card')?.classList.remove('is-visible');
+    
     if (mapSidebarEl) {
-        // Verwijder eventuele preview-gerelateerde classes
-        document.getElementById('map-preview-card')?.classList.remove('is-visible');
         mapSidebarEl.classList.remove('is-hidden-by-preview');
-        
-        // DIT IS DE FIX: Zet de sidebar expliciet in de 'ingeklapte' staat.
-        // Uw swipe-code weet nu precies waar hij is.
+        // DIT IS DE FIX: Forceer de 'ingeklapte' staat bij het openen.
         mapSidebarEl.classList.add('is-collapsed');
-        mapSidebarEl.style.transform = ''; // Laat de CSS de positie bepalen
+        // Verwijder inline styles zodat de CSS-klasse de controle heeft.
+        mapSidebarEl.style.transform = '';
+        mapSidebarEl.style.removeProperty('--panel-height-vh');
     }
     
     requestAnimationFrame(() => {
         mapOverlay.style.opacity = '1';
-        if (!isMapInitialized) {
-            initMap();
-        } else {
-            setTimeout(() => { if (map) map.invalidateSize(); }, 100);
-        }
+        if (!isMapInitialized) { initMap(); } 
+        else { setTimeout(() => map && map.invalidateSize(), 100); }
     });
 }
 
@@ -1033,14 +1020,7 @@ function closePreviewCard(event) {
     if (event) event.stopPropagation();
     
     document.getElementById('map-preview-card').classList.remove('is-visible');
-    
-    if (mapSidebarEl) {
-        mapSidebarEl.classList.remove('is-hidden-by-preview');
-        
-        // DIT IS DE FIX: Zet de sidebar expliciet terug in de 'ingeklapte' staat.
-        mapSidebarEl.classList.add('is-collapsed');
-        mapSidebarEl.style.transform = ''; // Laat CSS de positie weer bepalen
-    }
+    mapSidebarEl.classList.remove('is-hidden-by-preview');
     
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
 }
