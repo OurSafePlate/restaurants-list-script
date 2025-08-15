@@ -1544,8 +1544,7 @@ async function fetchAndDisplayMainList() {
 async function initializeSite() {
     log("Site initialisatie gestart.");
 
-    // STAP 1: KOPPEL ALLE DOM ELEMENTEN (ongewijzigd)
-    // ... (uw querySelectors blijven hier ongewijzigd) ...
+    // STAP 1: KOPPEL ALLE DOM ELEMENTEN
     restaurantListWrapperEl = document.querySelector(restaurantListWrapperSelector);
     templateItemEl = document.querySelector(templateItemSelector);
     mainSliderTemplateNodeGlobal = document.querySelector(mainSliderTemplateSelector);
@@ -1579,15 +1578,26 @@ async function initializeSite() {
         if (target.closest(showMapButtonSelector)) { e.preventDefault(); openMapOverlay(); }
         if (target.closest(closeMapButtonSelector)) { e.preventDefault(); closeMapOverlay(); }
         if (target.closest(searchAreaButtonSelector)) { e.preventDefault(); handleSearchArea(); }
-        if (target.closest(filtersToggleButtonSelector)) {
-            e.preventDefault();
-            const mapFilterPanel = document.querySelector('#map-view-filter-panel');
-            if (mapFilterPanel) mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
-        }
         if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
         if (target.closest(clearAllButtonSelector)) { e.preventDefault(); handleFilterChange(true); }
-        if (target.closest(openFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.add('is-open'); }
-        if (target.closest(closeFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.remove('is-open'); }
+        // --- Logica voor de Kaart-Filter Knoppen ---
+        const mapFilterPanel = document.querySelector('#map-view-filter-panel');
+        if (target.closest('#map-filters-toggle-button')) {
+            e.preventDefault();
+            if (mapFilterPanel) mapFilterPanel.classList.add('is-open');
+        }
+        if (target.closest('#map-filter-close-button')) {
+            e.preventDefault();
+            if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
+        }
+        if (target.closest('#map-apply-filters-button')) {
+             e.preventDefault();
+             log("Kaartfilters toepassen en gebied doorzoeken...");
+             handleSearchArea();
+             if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
+        }
+        
+        // --- Paginatie Knoppen ---
         const pageButton = target.closest('[data-page]');
         if (pageButton) {
             e.preventDefault();
@@ -1598,30 +1608,6 @@ async function initializeSite() {
         if (target.closest(paginationNextButtonSelector)) { e.preventDefault(); if (currentPage < totalPages && !isLoading) { currentPage++; fetchAndDisplayMainList(); } }
     });
 
-	 // --- Logica voor de Kaart-Filter Knoppen ---
-
-	const mapFilterPanel = document.querySelector('#map-view-filter-panel');
-        
-        // Openen (alleen mobiel)
-        if (target.closest('#map-filters-toggle-button')) {
-            e.preventDefault();
-            if (mapFilterPanel) mapFilterPanel.classList.add('is-open');
-        }
-
-        // Sluiten (desktop & mobiel)
-        if (target.closest('#map-filter-close-button')) {
-            e.preventDefault();
-            if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
-        }
-
-        // Toepassen (mobiel)
-        if (target.closest('#map-apply-filters-button')) {
-             e.preventDefault();
-             log("Kaartfilters toepassen en gebied doorzoeken...");
-             handleSearchArea(); // Voert de API-call uit met de nieuwe filters
-             if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
-        }
-    });
 
     // Dit blok is uit de click-listener gehaald en hier geplaatst.
     if (mapSidebarEl && window.innerWidth <= 767) {
