@@ -1598,7 +1598,31 @@ async function initializeSite() {
         if (target.closest(paginationNextButtonSelector)) { e.preventDefault(); if (currentPage < totalPages && !isLoading) { currentPage++; fetchAndDisplayMainList(); } }
     });
 
-    // --- DE FIX: DE SWIPE-INITIALISATIE WORDT HIER EENMALIG UITGEVOERD ---
+	 // --- Logica voor de Kaart-Filter Knoppen ---
+
+	const mapFilterPanel = document.querySelector('#map-view-filter-panel');
+        
+        // Openen (alleen mobiel)
+        if (target.closest('#map-filters-toggle-button')) {
+            e.preventDefault();
+            if (mapFilterPanel) mapFilterPanel.classList.add('is-open');
+        }
+
+        // Sluiten (desktop & mobiel)
+        if (target.closest('#map-filter-close-button')) {
+            e.preventDefault();
+            if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
+        }
+
+        // Toepassen (mobiel)
+        if (target.closest('#map-apply-filters-button')) {
+             e.preventDefault();
+             log("Kaartfilters toepassen en gebied doorzoeken...");
+             handleSearchArea(); // Voert de API-call uit met de nieuwe filters
+             if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
+        }
+    });
+
     // Dit blok is uit de click-listener gehaald en hier geplaatst.
     if (mapSidebarEl && window.innerWidth <= 767) {
         log("Mobiel apparaat gedetecteerd. Swipe-listeners worden EENMALIG gekoppeld.");
