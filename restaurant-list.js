@@ -731,17 +731,42 @@ function handleListItemClick(id) {
 }
 
 function highlightSelection(id, openTooltip = false) {
-    if (!mapListContainer) return;
-    mapListContainer.querySelectorAll('.restaurants_item-component').forEach(card => card.classList.remove('is-map-highlighted'));
-    
-    const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
-    if (listItem) listItem.classList.add('is-map-highlighted');
+    // --- DESELECTEER VORIGE ITEMS ---
+    // 1. Verwijder de 'is-selected' class van ALLE markers
+    Object.values(markers).forEach(m => {
+        if (m._icon) { // Veiligheidscheck
+            m._icon.firstChild.classList.remove('is-selected');
+        }
+        m.setZIndexOffset(0);
+        if (m.isTooltipOpen()) {
+            m.closeTooltip(); // Sluit alle andere tooltips
+        }
+    });
 
-    Object.values(markers).forEach(m => m.setZIndexOffset(0));
+    // 2. Verwijder de highlight van alle lijst-items
+    if (mapListContainer) {
+        mapListContainer.querySelectorAll('.restaurants_item-component').forEach(card => card.classList.remove('is-map-highlighted'));
+    }
+
+    // --- SELECTEER HET NIEUWE ITEM ---
+    // 3. Vind de nieuwe marker en pas de 'is-selected' class toe
     const marker = markers[id];
     if (marker) {
-        marker.setZIndexOffset(1000);
-        if (openTooltip) marker.openTooltip();
+        if (marker._icon) { // Veiligheidscheck
+            marker._icon.firstChild.classList.add('is-selected');
+        }
+        marker.setZIndexOffset(1000); // Breng naar de voorgrond
+        
+        // Open de tooltip als dit is aangegeven
+        if (openTooltip && !marker.isTooltipOpen()) {
+            marker.openTooltip();
+        }
+    }
+
+    // 4. Highlight het bijbehorende item in de lijst (voor desktop)
+    const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
+    if (listItem) {
+        listItem.classList.add('is-map-highlighted');
     }
 }
 
