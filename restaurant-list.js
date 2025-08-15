@@ -31,6 +31,7 @@
   const filtersToggleButtonSelector = '#map-filters-toggle-button';
   const filterPanelSelector = '#map-filter-form-content';
   const mapSidebarSelector = '.map-sidebar';
+  const PANEL_COLLAPSED_HEIGHT = 80;
 
 
   // --- SELECTOREN ---
@@ -79,6 +80,8 @@
   let currentMapRestaurants = []; // Slaat de resultaten op die op de kaart getoond worden	
   let mapSidebarEl;
   let touchStartY = 0;
+  let touchCurrentY = 0;
+  
 
   // --- CENTRALE STATE VOOR HET PANEEL ---
   let panelState = 'collapsed'; // 'collapsed', 'partial', 'full'
@@ -915,47 +918,52 @@ function handleTouchMove(e) {
     touchCurrentY = e.touches[0].clientY;
     const diffY = touchCurrentY - touchStartY;
     
-    // Bepaal de huidige positie en pas de transform direct toe
     let currentTranslateY;
-    if (panelState === 'collapsed') {
-        currentTranslateY = window.innerHeight - 40;
-    } else if (panelState === 'partial') {
-        currentTranslateY = window.innerHeight * 0.6;
-    } else { // full
-        currentTranslateY = window.innerHeight * 0.1;
+    // Gebruik de class, niet de 'panelState' variabele voor robuustheid
+    if (mapSidebarEl.classList.contains('is-collapsed')) {
+        currentTranslateY = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
+    } else {
+        const currentVh = parseFloat(mapSidebarEl.style.getPropertyValue('--panel-height-vh') || '40');
+        currentTranslateY = window.innerHeight * (1 - currentVh / 100);
     }
+    
     let newY = currentTranslateY + diffY;
-
+    
+    const minHeightPx = window.innerHeight * 0.1; // 90vh
+    const maxHeightPx = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
+    newY = Math.max(minHeightPx, Math.min(newY, maxHeightPx));
+    
     mapSidebarEl.style.transform = `translateY(${newY}px)`;
 }
 
 function handleTouchEnd() {
     if (touchStartY === 0) return;
     
-    mapSidebarEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+    mapSidebarEl.style.transition = 'transform 0.3s ease-out';
     const currentPos = mapSidebarEl.getBoundingClientRect().top;
     const screenHeight = window.innerHeight;
 
-    // Je perfecte snap-logica
-    const snapPoints = {
-        full: screenHeight * 0.1,
-        partial: screenHeight * 0.6,
-        collapsed: screenHeight - 40
-    };
+    const snapPointHigh = screenHeight * 0.1; // 90vh
+    const snapPointMid = screenHeight * 0.6;  // 40vh
+    const snapPointLow = screenHeight - PANEL_COLLAPSED_HEIGHT; // Gebruik de variabele
 
-    let closestState = 'collapsed';
-    let minDistance = Infinity;
-    for (const state in snapPoints) {
-        const distance = Math.abs(currentPos - snapPoints[state]);
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestState = state;
-        }
+    const distances = [
+        { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
+        { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
+        { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
+    ];
+    const closest = distances.sort((a, b) => a.diff - b.diff)[0];
+
+    if (closest.point === snapPointLow) {
+        mapSidebarEl.classList.add('is-collapsed');
+        mapSidebarEl.style.transform = ''; // Laat CSS het overnemen
+        mapSidebarEl.style.removeProperty('--panel-height-vh');
+    } else {
+        mapSidebarEl.classList.remove('is-collapsed');
+        const targetVh = Math.round((screenHeight - closest.point) / screenHeight * 100);
+        mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
+        mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
     }
-    
-    // Update de state en de positie
-    panelState = closestState;
-    mapSidebarEl.style.transform = `translateY(${snapPoints[panelState]}px)`;
 
     touchStartY = 0;
     touchCurrentY = 0;
