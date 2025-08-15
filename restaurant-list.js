@@ -691,18 +691,35 @@ async function handleSearchArea() {
 }
 	
 function handleMarkerClick(id) {
+    log(`Marker geklikt: ${id}`);
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
-    renderPreviewCard(restaurant);
+    // Platform-specifieke logica
+    if (window.innerWidth <= 767) {
+        // --- MOBIEL: Toon de preview-kaart ---
+        renderPreviewCard(restaurant);
+        document.getElementById('map-preview-card').classList.add('is-visible');
+        mapSidebarEl.classList.add('is-hidden-by-preview');
 
-    document.getElementById('map-preview-card').classList.add('is-visible');
-    mapSidebarEl.classList.add('is-hidden-by-preview');
-
-    const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
-    map.flyTo(targetLatLng, 16);
-    map.once('moveend', () => { /* ... uw pan-logica ... */ });
-    highlightSelection(id, false);
+        const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
+        map.flyTo(targetLatLng, 16);
+        map.once('moveend', () => {
+            const previewHeight = 220;
+            const mapHeight = map.getSize().y;
+            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40;
+            map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
+        });
+    } else {
+        // --- DESKTOP: Scroll de lijst naar het item ---
+        const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
+        if (listItem) {
+            listItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+    
+    // Highlight de selectie op beide platforms
+    highlightSelection(id, true);
 }   
 
 function handleListItemClick(id) {
@@ -939,32 +956,33 @@ function handleTouchMove(e) {
 function handleTouchEnd() {
     if (touchStartY === 0) return;
     
-    mapSidebarEl.style.transition = 'transform 0.3s ease-out';
+    mapSidebarEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
     const currentPos = mapSidebarEl.getBoundingClientRect().top;
     const screenHeight = window.innerHeight;
 
-    const snapPointHigh = screenHeight * 0.1; // 90vh
-    const snapPointMid = screenHeight * 0.6;  // 40vh
-    const snapPointLow = screenHeight - PANEL_COLLAPSED_HEIGHT; // Gebruik de variabele
+    const snapPoints = {
+        full: screenHeight * 0.1,
+        partial: screenHeight * 0.6,
+        collapsed: screenHeight - PANEL_COLLAPSED_HEIGHT
+    };
 
-    const distances = [
-        { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
-        { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
-        { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
-    ];
-    const closest = distances.sort((a, b) => a.diff - b.diff)[0];
-
-    if (closest.point === snapPointLow) {
-        mapSidebarEl.classList.add('is-collapsed');
-        mapSidebarEl.style.transform = ''; // Laat CSS het overnemen
-        mapSidebarEl.style.removeProperty('--panel-height-vh');
-    } else {
-        mapSidebarEl.classList.remove('is-collapsed');
-        const targetVh = Math.round((screenHeight - closest.point) / screenHeight * 100);
-        mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
-        mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
+    let closestState = 'collapsed';
+    let minDistance = Infinity;
+    for (const state in snapPoints) {
+        const distance = Math.abs(currentPos - snapPoints[state]);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestState = state;
+        }
     }
+    
+    // Dit zorgt ervoor dat de volgende 'handleTouchMove' de juiste startpositie kent.
+    panelState = closestState;
+    
+    // Update de visuele positie
+    mapSidebarEl.style.transform = `translateY(${snapPoints[panelState]}px)`;
 
+    // Reset de touch-variabelen
     touchStartY = 0;
     touchCurrentY = 0;
 }
