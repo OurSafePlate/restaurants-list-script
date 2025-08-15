@@ -1574,28 +1574,48 @@ async function initializeSite() {
 
     // ALGEMENE CLICK LISTENER (voor clicks, niet voor initialisatie)
     document.body.addEventListener('click', (e) => {
-        const target = e.target;
-        if (target.closest(showMapButtonSelector)) { e.preventDefault(); openMapOverlay(); }
-        if (target.closest(closeMapButtonSelector)) { e.preventDefault(); closeMapOverlay(); }
-        if (target.closest(searchAreaButtonSelector)) { e.preventDefault(); handleSearchArea(); }
-        if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
-        if (target.closest(clearAllButtonSelector)) { e.preventDefault(); handleFilterChange(true); }
-        // --- Logica voor de Kaart-Filter Knoppen ---
-        const mapFilterPanel = document.querySelector('#map-view-filter-panel');
-        if (target.closest('#map-filters-toggle-button')) {
-            e.preventDefault();
-            if (mapFilterPanel) mapFilterPanel.classList.add('is-open');
+    const target = e.target;
+    
+    // --- Algemene & Kaart Overlay Knoppen ---
+    if (target.closest(showMapButtonSelector)) { e.preventDefault(); openMapOverlay(); }
+    if (target.closest(closeMapButtonSelector)) { e.preventDefault(); closeMapOverlay(); }
+    if (target.closest(searchAreaButtonSelector)) { e.preventDefault(); handleSearchArea(); }
+
+    // --- Logica voor Hoofdlijst Filters (Hersteld naar origineel) ---
+    if (target.closest(openFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.add('is-open'); }
+    if (target.closest(closeFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.remove('is-open'); }
+    if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
+    if (target.closest(clearAllButtonSelector)) { e.preventDefault(); handleFilterChange(true); }
+
+    // --- Logica specifiek voor Kaart-Filter Knoppen ---
+    const mapFilterPanel = document.querySelector('#map-view-filter-panel');
+    if (target.closest('#map-filters-toggle-button')) {
+        e.preventDefault();
+        if (mapFilterPanel) {
+            // Op desktop, toon/verberg als een blok. Op mobiel, voeg 'is-open' toe.
+            if (window.innerWidth > 767) {
+                mapFilterPanel.style.display = (mapFilterPanel.style.display === 'block') ? 'none' : 'block';
+            } else {
+                mapFilterPanel.classList.add('is-open');
+            }
         }
-        if (target.closest('#map-filter-close-button')) {
-            e.preventDefault();
-            if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
+    }
+    if (target.closest('#map-filter-close-button')) {
+        e.preventDefault();
+        if (mapFilterPanel) {
+            if (window.innerWidth > 767) {
+                mapFilterPanel.style.display = 'none';
+            } else {
+                mapFilterPanel.classList.remove('is-open');
+            }
         }
-        if (target.closest('#map-apply-filters-button')) {
-             e.preventDefault();
-             log("Kaartfilters toepassen en gebied doorzoeken...");
-             handleSearchArea();
-             if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
-        }
+    }
+    if (target.closest('#map-apply-filters-button')) {
+         e.preventDefault();
+         log("Kaartfilters toepassen en gebied doorzoeken...");
+         handleSearchArea();
+         if (mapFilterPanel) mapFilterPanel.classList.remove('is-open');
+    }
         
         // --- Paginatie Knoppen ---
         const pageButton = target.closest('[data-page]');
