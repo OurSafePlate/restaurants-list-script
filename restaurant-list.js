@@ -697,21 +697,32 @@ function handleMarkerClick(id) {
 
     // Platform-specifieke logica
     if (window.innerWidth <= 767) {
-        // --- MOBIEL: Toon de preview-kaart ---
+        // --- MOBIELE LOGICA ---
         renderPreviewCard(restaurant);
         document.getElementById('map-preview-card').classList.add('is-visible');
-        mapSidebarEl.classList.add('is-hidden-by-preview');
+        if(mapSidebarEl) mapSidebarEl.classList.add('is-hidden-by-preview');
 
         const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
         map.flyTo(targetLatLng, 16);
+        
         map.once('moveend', () => {
-            const previewHeight = 220;
-            const mapHeight = map.getSize().y;
-            const panOffset = (mapHeight / 2) - (previewHeight / 2) - 40;
+            // --- DE PAN-CORRECTIE ---
+            const previewHeight = 220; // De geschatte hoogte van je preview-kaart in pixels
+            
+            // De hoogte van het ZICHTBARE kaartgedeelte (schermhoogte - preview-hoogte)
+            const visibleMapHeight = map.getSize().y - previewHeight;
+            
+            // We willen het midden van het ZICHTBARE gedeelte op de pin.
+            // Het huidige (geometrische) midden zit op (map-hoogte / 2).
+            // We moeten het dus omhoog schuiven met het verschil.
+            const panOffset = (map.getSize().y / 2) - (visibleMapHeight / 2);
+
+            // Pan de kaart omhoog met de berekende offset. Een negatieve y-waarde is omhoog.
             map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
         });
+        
     } else {
-        // --- DESKTOP: Scroll de lijst naar het item ---
+        // --- DESKTOP LOGICA ---
         const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
         if (listItem) {
             listItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
