@@ -732,14 +732,15 @@ function handleListItemClick(id) {
 
 function highlightSelection(id, openTooltip = false) {
     // --- DESELECTEER VORIGE ITEMS ---
-    // 1. Verwijder de 'is-selected' class van ALLE markers
+    // 1. Verwijder de 'is-selected' class en sluit tooltips van ALLE markers
     Object.values(markers).forEach(m => {
-        if (m._icon) { // Veiligheidscheck
+        // DE FIX: Voeg een veiligheidscheck toe. Voer de code alleen uit als de marker een zichtbaar icoon heeft.
+        if (m._icon && m._icon.firstChild) {
             m._icon.firstChild.classList.remove('is-selected');
         }
         m.setZIndexOffset(0);
         if (m.isTooltipOpen()) {
-            m.closeTooltip(); // Sluit alle andere tooltips
+            m.closeTooltip();
         }
     });
 
@@ -752,7 +753,7 @@ function highlightSelection(id, openTooltip = false) {
     // 3. Vind de nieuwe marker en pas de 'is-selected' class toe
     const marker = markers[id];
     if (marker) {
-        if (marker._icon) { // Veiligheidscheck
+        if (marker._icon && marker._icon.firstChild) {
             marker._icon.firstChild.classList.add('is-selected');
         }
         marker.setZIndexOffset(1000); // Breng naar de voorgrond
