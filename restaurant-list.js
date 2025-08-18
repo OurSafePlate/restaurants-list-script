@@ -732,11 +732,13 @@ function handleListItemClick(id) {
 
 function highlightSelection(id, openTooltip = false) {
     // --- DESELECTEER VORIGE ITEMS ---
-    // 1. Verwijder de 'is-selected' class en sluit tooltips van ALLE markers
     Object.values(markers).forEach(m => {
-        // DE FIX: Voeg een veiligheidscheck toe. Voer de code alleen uit als de marker een zichtbaar icoon heeft.
-        if (m._icon && m._icon.firstChild) {
-            m._icon.firstChild.classList.remove('is-selected');
+        // DE FIX: Zoek specifiek naar de .marker-wrapper binnen het icoon.
+        if (m._icon) {
+            const markerWrapper = m._icon.querySelector('.marker-wrapper');
+            if (markerWrapper) {
+                markerWrapper.classList.remove('is-selected');
+            }
         }
         m.setZIndexOffset(0);
         if (m.isTooltipOpen()) {
@@ -744,33 +746,32 @@ function highlightSelection(id, openTooltip = false) {
         }
     });
 
-    // 2. Verwijder de highlight van alle lijst-items
     if (mapListContainer) {
         mapListContainer.querySelectorAll('.restaurants_item-component').forEach(card => card.classList.remove('is-map-highlighted'));
     }
 
     // --- SELECTEER HET NIEUWE ITEM ---
-    // 3. Vind de nieuwe marker en pas de 'is-selected' class toe
     const marker = markers[id];
     if (marker) {
-        if (marker._icon && marker._icon.firstChild) {
-            marker._icon.firstChild.classList.add('is-selected');
+        // DE FIX: Zoek ook hier specifiek naar de .marker-wrapper.
+        if (marker._icon) {
+            const markerWrapper = marker._icon.querySelector('.marker-wrapper');
+            if (markerWrapper) {
+                markerWrapper.classList.add('is-selected');
+            }
         }
-        marker.setZIndexOffset(1000); // Breng naar de voorgrond
+        marker.setZIndexOffset(1000);
         
-        // Open de tooltip als dit is aangegeven
         if (openTooltip && !marker.isTooltipOpen()) {
             marker.openTooltip();
         }
     }
 
-    // 4. Highlight het bijbehorende item in de lijst (voor desktop)
     const listItem = mapListContainer.querySelector(`[data-restaurant-id='${id}']`);
     if (listItem) {
         listItem.classList.add('is-map-highlighted');
     }
 }
-
     
 function openMapOverlay() {
     log("Kaart overlay wordt geopend...");
