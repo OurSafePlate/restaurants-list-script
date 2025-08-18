@@ -718,7 +718,7 @@ function handleMarkerClick(id) {
             const panOffset = (map.getSize().y / 2) - (visibleMapHeight / 2);
 
             // Pan de kaart omhoog met de berekende offset. Een negatieve y-waarde is omhoog.
-            map.panBy([0, -panOffset], { animate: true, duration: 0.5 });
+            map.panBy([0, panOffset], { animate: true, duration: 0.5 });
         });
         
     } else {
