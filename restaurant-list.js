@@ -1622,7 +1622,11 @@ async function initializeSite() {
     // --- Logica voor Hoofdlijst Filters (Hersteld naar origineel) ---
     if (target.closest(openFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.add('is-open'); }
     if (target.closest(closeFiltersButtonSelector)) { e.preventDefault(); if (filtersPanelEl) filtersPanelEl.classList.remove('is-open'); }
-    if (target.closest(applyFiltersButtonSelector)) { e.preventDefault(); handleFilterChange(); }
+    if (target.closest(applyFiltersButtonSelector)) { 
+    e.preventDefault(); 
+    handleFilterChange();
+    if (filtersPanelEl) filtersPanelEl.classList.remove('is-open');
+	}
     if (target.closest(clearAllButtonSelector)) { e.preventDefault(); handleFilterChange(true); }
 
     // --- Logica specifiek voor Kaart-Filter Knoppen ---
@@ -1680,11 +1684,15 @@ async function initializeSite() {
     // Aparte listeners voor 'input' en 'change'
     if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
     const mainFilterForm = document.querySelector('#filter-form');
-    if (mainFilterForm) {
-        mainFilterForm.addEventListener('change', (e) => {
-            if (e.target.type === 'checkbox') handleFilterChange();
-        });
-    }
+if (mainFilterForm) {
+    mainFilterForm.addEventListener('change', (e) => {
+        // DE FIX: Voeg een check toe. Voer dit alleen uit op schermen breder dan 767px.
+        if (e.target.type === 'checkbox' && window.innerWidth > 767) {
+            log("Desktop filter gewijzigd, direct toepassen...");
+            handleFilterChange();
+        }
+    });
+}
 
 	const mapFilterForm = document.querySelector('#map-filter-form');
     if (mapFilterForm) {
