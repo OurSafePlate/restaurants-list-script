@@ -621,6 +621,7 @@ function initMap() {
 				userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
                 log(`Locatie gevonden: ${userCoords}. Kaart centreren.`);
                 map.flyTo(userCoords, 14); // Zoom in op de gebruiker (zoom 14 is goed voor een stad)
+				fetchAndDisplayMainList();
                  setTimeout(() => {
                     handleSearchArea();
                 }, 1000); // Wacht tot de 'flyTo' animatie klaar is.
@@ -1571,6 +1572,10 @@ async function fetchAndDisplayMainList() {
     if (currentFilters.filter_meal_options.length > 0) params.append('filter_meal_options', currentFilters.filter_meal_options.join(','));
     if (currentFilters.filter_price.length > 0) params.append('filter_price', currentFilters.filter_price.join(','));
     if (currentFilters.filter_allergie.length > 0) params.append('filter_allergie', currentFilters.filter_allergie.join(','));
+	if (userLocation) {
+        params.append('user_lat', userLocation.lat);
+        params.append('user_lng', userLocation.lng);
+    }
     const requestUrl = `${API_RESTAURANTS_LIST}?${params.toString()}`;
 
     try {
