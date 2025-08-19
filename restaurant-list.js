@@ -81,6 +81,7 @@
   let mapSidebarEl;
   let touchStartY = 0;
   let touchCurrentY = 0;
+  let userLocation = null;
   
 
   // --- CENTRALE STATE VOOR HET PANEEL ---
@@ -617,6 +618,7 @@ function initMap() {
             (position) => {
                 // SUCCES: Gebruiker geeft toestemming
                 const userCoords = [position.coords.latitude, position.coords.longitude];
+				userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
                 log(`Locatie gevonden: ${userCoords}. Kaart centreren.`);
                 map.flyTo(userCoords, 14); // Zoom in op de gebruiker (zoom 14 is goed voor een stad)
                  setTimeout(() => {
@@ -695,6 +697,11 @@ async function handleSearchArea() {
         ne_lat: bounds.getNorthEast().lat,
         ne_lng: bounds.getNorthEast().lng,
     });
+
+	if (userLocation) {
+        params.append('user_lat', userLocation.lat);
+        params.append('user_lng', userLocation.lng);
+    }
     
     // Zoek het filterformulier van de kaart
     const mapFilterFormEl = document.querySelector('#map-filter-form');
