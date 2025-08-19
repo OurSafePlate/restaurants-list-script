@@ -174,7 +174,7 @@ async function getAuthToken() {
     }
 }
 	
-// --- NIEUWE FUNCTIE: FILTERS UIT URL LEZEN EN TOEPASSEN ---
+// --- FUNCTIE: FILTERS UIT URL LEZEN EN TOEPASSEN ---
 function applyFiltersFromURL() {
     log("applyFiltersFromURL: Functie gestart. Controleren op URL-parameters...");
     const urlParams = new URLSearchParams(window.location.search);
@@ -252,6 +252,20 @@ function applyFiltersFromURL() {
     log("Geen geldige filter-parameters in URL gevonden.");
     return false; // Geef aan dat een normale fetch moet plaatsvinden
 }
+
+// --- FUNCTIE VOOR FORMATERING VAN DE AFSTAND IN KM ---
+function formatDistance(meters) {
+    if (meters === null || meters === undefined) return null;
+    
+    const kilometers = meters / 1000;
+    
+    if (kilometers < 1) {
+        return `${Math.round(meters)} m afstand`;
+    }
+    
+    return `${kilometers.toFixed(1).replace('.', ',')} km afstand`;
+}
+
   
   // -- FUNCTIE VOOR RATING BOLLETJES -- 
   
@@ -444,6 +458,27 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
             });
         } else if (mealOptEl) {
             mealOptEl.innerHTML = '';
+        }
+
+		const distanceValue = restaurantData.distance; // Haal de waarde uit de API
+        const distanceEl = newItem.querySelector('.distance-text');
+        
+        if (distanceEl) {
+            const formattedDistance = formatDistance(distanceValue);
+            if (formattedDistance) {
+                distanceEl.textContent = `• ${formattedDistance}`;
+                // Maak het element EN de divider ervoor zichtbaar
+                distanceEl.style.display = 'block'; 
+                if (distanceEl.previousElementSibling && distanceEl.previousElementSibling.classList.contains('restaurants_info-divider')) {
+                    distanceEl.previousElementSibling.style.display = 'block';
+                }
+            } else {
+                // Zorg ervoor dat het verborgen blijft als er geen data is
+                distanceEl.style.display = 'none';
+                if (distanceEl.previousElementSibling && distanceEl.previousElementSibling.classList.contains('restaurants_info-divider')) {
+                    distanceEl.previousElementSibling.style.display = 'none';
+                }
+            }
         }
 
         const totalRatingValue = restaurantData.total_rating;
@@ -1054,6 +1089,7 @@ function renderPreviewCard(restaurant) {
                     <span style="font-weight: bold;">${restaurant.total_rating ? parseFloat(restaurant.total_rating).toFixed(1) : '-'}</span>
                     <div class="restaurants_rating-star-wrap is-quality-rating"></div>
                     <span>(${restaurant.review_count || 0} beoordelingen)</span>
+					<span class="preview-distance"></span> 
                 </div>
                 <div class="preview-info-line">
                     <span>${restaurant.restaurant_price || ''} • ${restaurant.restaurant_keuken || ''}</span>
@@ -1062,7 +1098,21 @@ function renderPreviewCard(restaurant) {
         </div>
     `;
 
-    // DE FIX: Voeg de lege bolletje-divs dynamisch toe
+	// --- AFSTAND INVULLEN EN ZICHTBAAR MAKEN ---
+  const distanceValue = restaurant.distance;
+  const distanceEl = cardContainer.querySelector('.preview-distance');
+
+  if (distanceEl) {
+      const formattedDistance = formatDistance(distanceValue);
+      if (formattedDistance) {
+          distanceEl.textContent = `• ${formattedDistance}`;
+          distanceEl.style.display = 'inline'; // Gebruik 'inline' of 'inline-block' voor tekst
+      } else {
+          distanceEl.style.display = 'none'; // Verberg als er geen data is
+      }
+  }
+
+    //  Voeg de lege bolletje-divs dynamisch toe
     const qualityRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.is-quality-rating');
     const allergyRatingContainer = cardContainer.querySelector('.restaurants_rating-star-wrap.restaurants_rating_allergy_wrap');
 
