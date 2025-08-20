@@ -621,7 +621,8 @@ function initMap() {
 				userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
                 log(`Locatie gevonden: ${userCoords}. Kaart centreren.`);
                 map.flyTo(userCoords, 14); // Zoom in op de gebruiker (zoom 14 is goed voor een stad)
-				fetchAndDisplayMainList();
+				fetchAndDisplayMainList(); // Herlaadt de data voor de (verborgen) hoofdlijst
+                handleSearchArea(); // Herlaadt de data voor de kaartlijst
                  setTimeout(() => {
                     handleSearchArea();
                 }, 1000); // Wacht tot de 'flyTo' animatie klaar is.
@@ -890,13 +891,6 @@ function displayDataOnMap(restaurants) {
         return;
     }
 
-    const templateItem = document.querySelector(`${mapListTemplateSelector} .w-dyn-item`);
-    if (!templateItem) {
-        console.error("KRITISCHE FOUT: Kon het template item (.w-dyn-item) niet vinden.");
-        mapListContainer.innerHTML = '<div>Template voor restaurantlijst is niet correct ingesteld.</div>';
-        return;
-    }
-
     // Leeg de lijst en de kaartmarkers
     mapListContainer.innerHTML = '';
     Object.values(markers).forEach(marker => map.removeLayer(marker));
@@ -909,92 +903,16 @@ function displayDataOnMap(restaurants) {
 
     restaurants.forEach(restaurant => {
         createMarker(restaurant);
-        const newItem = templateItem.cloneNode(true);
         
-        // --- START INVULLEN VAN ALLE VELDEN (INCLUSIEF FIXES) ---
-
-        // Basisinfo (was al correct)
-        newItem.querySelector('.restaurants_title').textContent = restaurant.Name || 'Naam onbekend';
-        const imgEl = newItem.querySelector('.restaurants_img');
-        if (imgEl) imgEl.src = restaurant.restaurant_img_url || '';
-        newItem.querySelector('.restaurant_cuisine').textContent = restaurant.restaurant_keuken || '-';
-        newItem.querySelector('.restaurant_price').textContent = restaurant.restaurant_price || '-';
-        newItem.querySelector('.restaurants_rating_count-text').textContent = `${restaurant.review_count || 0} beoordelingen`;
-
-        // FIX #1: Toon meal_options als platte tekst
-        const mealOptEl = newItem.querySelector('.meal-options-output');
-        if (mealOptEl) {
-            if (restaurant.restaurant_meal_options && restaurant.restaurant_meal_options.length > 0) {
-                mealOptEl.textContent = restaurant.restaurant_meal_options.join(', ');
-            } else {
-                mealOptEl.textContent = ''; // Maak leeg als er geen data is
-            }
-        }
+        // DE FIX: Hergebruik de centrale render-functie die de afstand al correct toont.
+        // We hoeven hier geen velden meer handmatig in te vullen.
+        const newItem = renderRestaurantItem(restaurant, false); 
         
-        // FIX #2: Vul de Algemene Rating (total_rating) correct in
-        const totalRatingValue = restaurant.total_rating; // Gebruik het correcte veld
-        const totalRatingTextEl = newItem.querySelector('.restaurant-total-rating');
-        if (totalRatingTextEl) {
-            totalRatingTextEl.textContent = totalRatingValue ? parseFloat(totalRatingValue).toFixed(1) : '-';
+        if (newItem) {
+            newItem.dataset.restaurantId = restaurant.id;
+            newItem.addEventListener('click', () => handleListItemClick(restaurant.id));
+            mapListContainer.appendChild(newItem);
         }
-        renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.is-quality-rating', totalRatingValue);
-
-        // Our Safe Score (was al correct)
-        const allergyRatingValue = restaurant.allergy_rating;
-        const allergyRatingTextEl = newItem.querySelector('.restaurants_allergy_rating-overlay-rating');
-        if (allergyRatingTextEl) {
-            allergyRatingTextEl.textContent = allergyRatingValue ? parseFloat(allergyRatingValue).toFixed(1) : '-';
-        }
-        renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', allergyRatingValue);
-        
-        // Reviews en iconen (was al correct)
-        const reviewsContainerEl = newItem.querySelector('.recent-reviews-container');
-        // ... (de rest van je bestaande, werkende code voor reviews en allergie-iconen) ...
-        if (reviewsContainerEl) {
-             const review1El = reviewsContainerEl.querySelector('.first-example-review');
-             const review2El = reviewsContainerEl.querySelector('.second-example-review');
-             if(review1El && review2El) {
-                const review1Text = restaurant.latest_review_1_body;
-                const review2Text = restaurant.latest_review_2_body;
-                let hasVisibleReviews = false;
-    
-                if (review1Text && review1Text.trim() !== '') {
-                    review1El.textContent = `"${truncateText(review1Text, 80)}"`;
-                    review1El.style.display = 'block';
-                    hasVisibleReviews = true;
-                } else {
-                    review1El.style.display = 'none';
-                }
-    
-                if (review2Text && review2Text.trim() !== '') {
-                    review2El.textContent = `"${truncateText(review2Text, 80)}"`;
-                    review2El.style.display = 'block';
-                    hasVisibleReviews = true;
-                } else {
-                    review2El.style.display = 'none';
-                }
-    
-                reviewsContainerEl.style.display = hasVisibleReviews ? 'block' : 'none';
-             }
-        }
-        renderAllergyIcons(newItem, restaurant.review_allergies);
-        const allergyTitleEl = newItem.querySelector('#allergy-title-icons');
-        if (allergyTitleEl) {
-            allergyTitleEl.style.display = restaurant.review_allergies ? 'block' : 'none';
-        }
-
-        // --- EINDE INVULLEN ---
-
-        // Links en listeners
-        const allLinksInItem = newItem.querySelectorAll('a');
-        allLinksInItem.forEach(link => {
-            if (restaurant.slug) link.href = `/restaurants/${restaurant.slug}`;
-        });
-        
-        newItem.dataset.restaurantId = restaurant.id;
-        newItem.addEventListener('click', () => handleListItemClick(restaurant.id));
-        
-        mapListContainer.appendChild(newItem);
     });
     log(`displayDataOnMap: ${restaurants.length} items succesvol toegevoegd.`);
 }
