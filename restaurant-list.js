@@ -484,24 +484,26 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
             mealOptEl.innerHTML = '';
         }
 
-		const distanceValue = restaurantData.distance; // Haal de waarde uit de API
+		// --- AFSTAND WEERGEVEN ---
+        const distanceValue = restaurantData.distance;
         const distanceEl = newItem.querySelector('.distance-text');
-        
-        if (distanceEl) {
+        // DE FIX: Zoek naar de specifieke divider class die u heeft genoemd.
+        const distanceDividerEl = newItem.querySelector('.is-distance-text-divider');
+
+        // Voer de logica alleen uit als beide elementen bestaan
+        if (distanceEl && distanceDividerEl) {
             const formattedDistance = formatDistance(distanceValue);
+            
+            // Als er een geldige afstand is, toon beide elementen.
             if (formattedDistance) {
-                distanceEl.textContent = formattedDistance;
-                // Maak het element EN de divider ervoor zichtbaar
+                distanceEl.textContent = formattedDistance; // De '•' is hier al verwijderd
                 distanceEl.style.display = 'block'; 
-                if (distanceEl.previousElementSibling && distanceEl.previousElementSibling.classList.contains('restaurants_info-divider')) {
-                    distanceEl.previousElementSibling.style.display = 'block';
-                }
-            } else {
-                // Zorg ervoor dat het verborgen blijft als er geen data is
+                distanceDividerEl.style.display = 'block';
+            } 
+            // Anders, verberg beide elementen.
+            else {
                 distanceEl.style.display = 'none';
-                if (distanceEl.previousElementSibling && distanceEl.previousElementSibling.classList.contains('restaurants_info-divider')) {
-                    distanceEl.previousElementSibling.style.display = 'none';
-                }
+                distanceDividerEl.style.display = 'none';
             }
         }
 
