@@ -174,7 +174,30 @@ async function getAuthToken() {
         throw error;
     }
 }
-	
+
+// --- FUNCTIE: VRAAG USER LOCATIE OP ---
+function requestUserLocation() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            log("Browser ondersteunt geen geolocatie.");
+            return resolve(); // Ga verder zonder locatie
+        }
+        log("Vraag om locatie...");
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+                log(`Locatie gevonden: ${userLocation.lat}, ${userLocation.lng}`);
+                resolve();
+            },
+            () => {
+                log("Toestemming voor locatie geweigerd.");
+                resolve(); // Ga verder zonder locatie
+            },
+            { timeout: 7000, enableHighAccuracy: true } // Wacht max 7 sec
+        );
+    });
+}
+		
 // --- FUNCTIE: FILTERS UIT URL LEZEN EN TOEPASSEN ---
 function applyFiltersFromURL() {
     log("applyFiltersFromURL: Functie gestart. Controleren op URL-parameters...");
@@ -619,7 +642,7 @@ function initMap() {
                 log(`Locatie gevonden: ${userCoords}. Kaart centreren.`);
                 map.flyTo(userCoords, 14);
 
-                // DE FIX: Herlaad BEIDE lijsten ZODRA de locatie bekend is.
+                // Herlaad BEIDE lijsten ZODRA de locatie bekend is.
                 fetchAndDisplayMainList(); // Ververst de hoofdlijst op de achtergrond.
                 handleSearchArea();        // Ververst de kaartlijst direct.
             },
@@ -1677,6 +1700,7 @@ if (mainFilterForm) {
         if(document.querySelector('[fs-cmsload-element="loader"]')) {
             document.querySelector('[fs-cmsload-element="loader"]').style.display = 'block';
         }
+		await requestUserLocation();
         await getAuthToken(); // Wacht tot het token er is
         await fetchAllSliderDataOnce(); // Wacht tot slider data er is
         await fetchAndDisplayMainList(); // Wacht tot de hoofdlijst is geladen
