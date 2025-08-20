@@ -485,7 +485,7 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
         }
 
 		// --- AFSTAND WEERGEVEN ---
-        const distanceValue = restaurantData.distance;
+        const distanceValue = userLocation ? restaurantData.distance : null;
         const distanceEl = newItem.querySelector('.distance-text');
         // DE FIX: Zoek naar de specifieke divider class die u heeft genoemd.
         const distanceDividerEl = newItem.querySelector('.is-distance-text-divider');
@@ -1038,7 +1038,7 @@ function renderPreviewCard(restaurant) {
     `;
 
 	// --- AFSTAND INVULLEN EN ZICHTBAAR MAKEN ---
-  const distanceValue = restaurant.distance;
+  const distanceValue = userLocation ? restaurant.distance : null;
   const distanceEl = cardContainer.querySelector('.preview-distance');
 
   if (distanceEl) {
