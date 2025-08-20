@@ -1419,7 +1419,6 @@ async function fetchAllSliderDataOnce() {
     }
 
     const requestUrl = API_RESTAURANTS_SLIDER;
-    const requestBody = { count: 10, exclude_slugs_str: [] };
 
     try {
         log("fetchAllSliderDataOnce: API call (POST) naar:", requestUrl);
