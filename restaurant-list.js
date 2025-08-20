@@ -490,7 +490,7 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
         if (distanceEl) {
             const formattedDistance = formatDistance(distanceValue);
             if (formattedDistance) {
-                distanceEl.textContent = `• ${formattedDistance}`;
+                distanceEl.textContent = formattedDistance;
                 // Maak het element EN de divider ervoor zichtbaar
                 distanceEl.style.display = 'block'; 
                 if (distanceEl.previousElementSibling && distanceEl.previousElementSibling.classList.contains('restaurants_info-divider')) {
