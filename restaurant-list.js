@@ -1398,6 +1398,26 @@ async function fetchAllSliderDataOnce() {
         return;
     }
 
+	// 1. Lees de parameters uit de URL, net als bij de hoofdlijst.
+    const urlParams = new URLSearchParams(window.location.search);
+    const lat = urlParams.get('lat');
+    const lng = urlParams.get('lng');
+    const radius = urlParams.get('radius');
+
+    // 2. Bouw de body van de POST request dynamisch op.
+    const requestBody = {
+        count: 10,
+        exclude_slugs_str: []
+    };
+
+    // 3. Voeg de locatie- en radius-parameters toe ALS ze bestaan.
+    if (lat && lng && radius) {
+        log("fetchAllSliderDataOnce: Locatie-parameters gevonden. Toevoegen aan slider request.");
+        requestBody.user_lat = parseFloat(lat);
+        requestBody.user_lng = parseFloat(lng);
+        requestBody.radius_km = parseInt(radius, 10);
+    }
+
     const requestUrl = API_RESTAURANTS_SLIDER;
     const requestBody = { count: 10, exclude_slugs_str: [] };
 
