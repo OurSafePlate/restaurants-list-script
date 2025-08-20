@@ -598,8 +598,7 @@ function initMap() {
     log("Kaart initialiseren in:", mapElement);
     isMapInitialized = true;
 
-    // 1. Initialiseer de kaart op een tijdelijke, algemene locatie.
-    map = L.map(mapElement).setView([52.1, 5.3], 7); // Zoom uit op Nederland
+    map = L.map(mapElement).setView([52.1, 5.3], 7);
     
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
@@ -611,45 +610,34 @@ function initMap() {
         if (searchAreaButton) searchAreaButton.parentElement.style.display = 'block';
     });
 
-    // 2. Vraag om de locatie van de gebruiker.
     if (navigator.geolocation) {
         log("Browser ondersteunt geolocatie. Vraag om locatie...");
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                // SUCCES: Gebruiker geeft toestemming
                 const userCoords = [position.coords.latitude, position.coords.longitude];
 				userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
                 log(`Locatie gevonden: ${userCoords}. Kaart centreren.`);
-                map.flyTo(userCoords, 14); // Zoom in op de gebruiker (zoom 14 is goed voor een stad)
-				fetchAndDisplayMainList(); // Herlaadt de data voor de (verborgen) hoofdlijst
-                handleSearchArea(); // Herlaadt de data voor de kaartlijst
-                 setTimeout(() => {
-                    handleSearchArea();
-                }, 1000); // Wacht tot de 'flyTo' animatie klaar is.
+                map.flyTo(userCoords, 14);
+
+                // DE FIX: Herlaad BEIDE lijsten ZODRA de locatie bekend is.
+                fetchAndDisplayMainList(); // Ververst de hoofdlijst op de achtergrond.
+                handleSearchArea();        // Ververst de kaartlijst direct.
             },
             () => {
-                // FOUT/GEWEIGERD: Gebruiker weigert of er treedt een fout op
-                log("Toestemming voor locatie geweigerd of mislukt. Val terug op standaardlocatie.");
-                map.flyTo(INITIAL_COORDS, INITIAL_ZOOM); // Val terug op Arnhem
-                setTimeout(() => {
-                    handleSearchArea();
-                }, 1000); // Wacht tot de 'flyTo' animatie klaar is.
+                log("Toestemming voor locatie geweigerd. Val terug op standaardlocatie.");
+                map.flyTo(INITIAL_COORDS, INITIAL_ZOOM);
+                setTimeout(handleSearchArea, 1000);
             }
         );
     } else {
-        // GEEN GEOLOCATIE: De browser ondersteunt het helemaal niet
         log("Browser ondersteunt geen geolocatie. Val terug op standaardlocatie.");
         map.flyTo(INITIAL_COORDS, INITIAL_ZOOM);
-        setTimeout(() => {
-            handleSearchArea();
-        }, 1000); // Wacht tot de 'flyTo' animatie klaar is.
+        setTimeout(handleSearchArea, 1000);
     }
 
-    // De invalidateSize blijft belangrijk voor de rendering
-    setTimeout(() => {
-        map.invalidateSize();
-    }, 200);
+    setTimeout(() => { map.invalidateSize(); }, 200);
 }
+
 
 function createMarker(restaurant) {
     const lat = restaurant.geo_location?.data?.lat;
