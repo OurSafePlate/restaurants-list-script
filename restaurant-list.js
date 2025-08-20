@@ -178,6 +178,16 @@ async function getAuthToken() {
 // --- FUNCTIE: VRAAG USER LOCATIE OP ---
 function requestUserLocation() {
     return new Promise((resolve) => {
+		const urlParams = new URLSearchParams(window.location.search);
+        const latFromUrl = urlParams.get('lat');
+        const lngFromUrl = urlParams.get('lng');
+
+        // Als lat & lng in de URL staan, gebruik die en sla de popup over.
+        if (latFromUrl && lngFromUrl) {
+            userLocation = { lat: parseFloat(latFromUrl), lng: parseFloat(lngFromUrl) };
+            log(`Locatie uit URL parameters gehaald: ${userLocation.lat}, ${userLocation.lng}`);
+            return resolve(); // Belangrijk: ga direct door.
+        }
         if (!navigator.geolocation) {
             log("Browser ondersteunt geen geolocatie.");
             return resolve(); // Ga verder zonder locatie
@@ -1506,6 +1516,13 @@ async function fetchAndDisplayMainList() {
 	if (userLocation) {
         params.append('user_lat', userLocation.lat);
         params.append('user_lng', userLocation.lng);
+    }
+	const urlParamsForRadius = new URLSearchParams(window.location.search);
+    const radius = urlParamsForRadius.get('radius');
+    // Voeg de radius parameter alleen toe als we ook een locatie hebben.
+    if (radius && userLocation) {
+        params.append('radius_km', radius);
+        log(`Radius filter toegepast: ${radius} km`);
     }
     const requestUrl = `${API_RESTAURANTS_LIST}?${params.toString()}`;
 
