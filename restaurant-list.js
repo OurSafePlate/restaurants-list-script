@@ -973,6 +973,22 @@ function handleTouchStart(e) {
 
 function handleTouchMove(e) {
     if (touchStartY === 0) return;
+
+	const listEl = mapListContainer; // De lijst met restaurants
+    const isSwipingDown = (e.touches[0].clientY > touchStartY);
+
+    // Als het paneel volledig open is, en de gebruiker is NIET helemaal bovenaan
+    // de lijst OF swipet naar boven, dan laten we de browser scrollen en doen we niets.
+    if (panelState === 'full' && (listEl.scrollTop > 0 || !isSwipingDown)) {
+        return; // Sta native scroll toe
+    }
+    
+    // Als we hier zijn, betekent het:
+    // 1. Het paneel is 'collapsed' of 'partial' -> we willen het paneel bewegen.
+    // 2. Het paneel is 'full', maar de gebruiker swipet naar beneden vanaf de top -> "pull-to-close".
+    // In beide gevallen moeten we de native scroll blokkeren.
+    e.preventDefault();
+	
     touchCurrentY = e.touches[0].clientY;
     const diffY = touchCurrentY - touchStartY;
     
@@ -1723,14 +1739,12 @@ async function initializeSite() {
 
     // Dit blok is uit de click-listener gehaald en hier geplaatst.
     if (mapSidebarEl && window.innerWidth <= 767) {
-        log("Mobiel apparaat gedetecteerd. Swipe-listeners worden EENMALIG gekoppeld.");
-        const swipeHandle = mapSidebarEl.querySelector('.map-sidebar-header');
-        if (swipeHandle) {
-            swipeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
-            swipeHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
-            swipeHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
-        }
-    }
+    log("Mobiel apparaat gedetecteerd. Swipe-listeners worden EENMALIG gekoppeld aan het HELE paneel.");
+    // De listeners worden nu aan het hele zijpaneel gekoppeld, niet alleen de header.
+    mapSidebarEl.addEventListener('touchstart', handleTouchStart, { passive: true }); // passive: true is beter voor performance bij start
+    mapSidebarEl.addEventListener('touchmove', handleTouchMove, { passive: false }); // passive: false is NODIG om preventDefault te kunnen gebruiken
+    mapSidebarEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+}
     // Aparte listeners voor 'input' en 'change'
     if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
     const mainFilterForm = document.querySelector('#filter-form');
