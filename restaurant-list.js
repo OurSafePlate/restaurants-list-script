@@ -300,6 +300,21 @@ function formatDistance(meters) {
     return `${kilometers.toFixed(1).replace('.', ',')} km afstand`;
 }
 
+function updateScrollLock(state) {
+    if (!mapListContainer) return; // Zorg ervoor dat het element bestaat
+
+    log(`updateScrollLock: Nieuwe staat is '${state}'.`);
+    if (state === 'full') {
+        // Alleen als het paneel volledig open is, mag de lijst scrollen.
+        mapListContainer.classList.remove('is-scroll-locked');
+        log("Scrollen ontgrendeld voor de restaurantlijst.");
+    } else {
+        // In de 'collapsed' en 'partial' staat, is scrollen geblokkeerd.
+        mapListContainer.classList.add('is-scroll-locked');
+        log("Scrollen vergrendeld voor de restaurantlijst.");
+    }
+}
+
   
   // -- FUNCTIE VOOR RATING BOLLETJES -- 
   
@@ -869,6 +884,10 @@ function openMapOverlay() {
         
         // DE FIX: Synchroniseer de globale state met de visuele staat.
         panelState = 'collapsed';
+
+		// Zorg ervoor dat de scroll-lock direct actief is bij het openen.
+		updateScrollLock(panelState);
+		
     }
     
     requestAnimationFrame(() => {
@@ -1000,6 +1019,8 @@ function handleTouchEnd() {
     
     // Dit zorgt ervoor dat de volgende 'handleTouchMove' de juiste startpositie kent.
     panelState = closestState;
+
+	updateScrollLock(panelState);
     
     // Update de visuele positie
     mapSidebarEl.style.transform = `translateY(${snapPoints[panelState]}px)`;
