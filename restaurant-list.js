@@ -555,7 +555,7 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
 
 	// --- START ALLERGIE LOGICA ---
         // 1. Zoek de complete wrapper van de allergie-sectie.
-        const allergySectionWrapper = newItem.querySelector('#allergy-title-icons');
+        const allergySectionWrapper = newItem.querySelector('.restaurants_allergy-info-wrap');
 
         if (allergySectionWrapper) {
             // 2. Haal de allergie-tekst op uit de Xano data.
