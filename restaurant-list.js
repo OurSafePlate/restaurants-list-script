@@ -376,7 +376,7 @@ function renderAllergyIcons(parentElement, allergyText) {
   const capitalizeFirstLetter = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
   // Zoek de doel-container BINNEN het specifieke parentElement
-  const targetElement = parentElement.querySelector('#allergy-icon-container');
+  const targetElement = parentElement.querySelector('.allergy-icon-container');
   if (!targetElement) return false;
 
   const allergiesArray = (allergyText || "").toLowerCase().split(',').map(s => s.trim()).filter(s => s);
@@ -555,7 +555,7 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
 
 	// --- START ALLERGIE LOGICA ---
         // 1. Zoek de complete wrapper van de allergie-sectie.
-        const allergySectionWrapper = newItem.querySelector('.allergy-icon-container');
+        const allergySectionWrapper = newItem.querySelector('.allergy-section-wrapper');
 
         if (allergySectionWrapper) {
             // 2. Haal de allergie-tekst op uit de Xano data.
