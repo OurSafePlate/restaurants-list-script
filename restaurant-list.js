@@ -392,6 +392,18 @@ function renderAllergyIcons(parentElement, allergyText) {
     
     targetElement.innerHTML = iconsHTML;
   }
+
+// Controleer NA het vullen of de container daadwerkelijk kind-elementen (icoontjes) heeft.
+  // Dit is een robuuste check voor het geval de 'allergiesArray' wel items had,
+  // maar geen daarvan een match had in de 'allergyIconMap'.
+  if (targetElement.children.length > 0) {
+      // Er zijn icoontjes, dus zorg dat de container zichtbaar is.
+      targetElement.style.display = 'block'; 
+  } else {
+      // Er zijn geen icoontjes, verberg de container volledig om witruimte te voorkomen.
+      targetElement.style.display = 'none';
+  }	
+	
 }
 	
   // --- FUNCTIE OM TEKST IN TE KORTEN ---
