@@ -377,7 +377,7 @@ function renderAllergyIcons(parentElement, allergyText) {
 
   // Zoek de doel-container BINNEN het specifieke parentElement
   const targetElement = parentElement.querySelector('#allergy-icon-container');
-  if (!targetElement) return;
+  if (!targetElement) return false;
 
   const allergiesArray = (allergyText || "").toLowerCase().split(',').map(s => s.trim()).filter(s => s);
   
@@ -393,16 +393,11 @@ function renderAllergyIcons(parentElement, allergyText) {
     targetElement.innerHTML = iconsHTML;
   }
 
-// Controleer NA het vullen of de container daadwerkelijk kind-elementen (icoontjes) heeft.
-  // Dit is een robuuste check voor het geval de 'allergiesArray' wel items had,
-  // maar geen daarvan een match had in de 'allergyIconMap'.
-  if (targetElement.children.length > 0) {
-      // Er zijn icoontjes, dus zorg dat de container zichtbaar is.
-      targetElement.style.display = 'block'; 
-  } else {
-      // Er zijn geen icoontjes, verberg de container volledig om witruimte te voorkomen.
-      targetElement.style.display = 'none';
-  }	
+if (targetElement.children.length > 0) {
+        return true; // SUCCES: Er zijn icoontjes, geef 'true' terug.
+    } else {
+        return false; // MISLUKT: Er zijn geen icoontjes, geef 'false' terug.
+    }
 	
 }
 	
@@ -558,45 +553,26 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
         }
         renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', allergyRatingValue);
 
-	// --- START NIEUWE LOGICA: ALLERGIE-TITEL TONEN/VERBERGEN ---
+	// --- START ALLERGIE LOGICA ---
+        // 1. Zoek de complete wrapper van de allergie-sectie.
+        const allergySectionWrapper = newItem.querySelector('#allergy-title-icons');
 
-    // 1. Zoek het titel-element BINNEN het huidige restaurant-item.
-    const allergyTitleEl = newItem.querySelector('#allergy-title-icons');
-    
-    // 2. Haal de allergie-tekst op uit de Xano data.
-    const allergyTextFromXano = restaurantData.review_allergies || "";
+        if (allergySectionWrapper) {
+            // 2. Haal de allergie-tekst op uit de Xano data.
+            const allergyTextFromXano = restaurantData.review_allergies || ""; 
 
-    // 3. Controleer of de titel-div bestaat en of er daadwerkelijk allergie-tekst is.
-    if (allergyTitleEl) {
-        if (allergyTextFromXano && allergyTextFromXano.trim() !== "") {
-            // Zo ja: maak de titel zichtbaar.
-            // Gebruik 'block', 'flex', of '' afhankelijk van de standaard display-stijl in Webflow.
-            allergyTitleEl.style.display = 'block'; 
-        } else {
-            // Zo nee: verberg de titel.
-            allergyTitleEl.style.display = 'none';
+            // 3. Roep de renderAllergyIcons functie aan en VANG HET RESULTAAT OP.
+            // De functie probeert de icoontjes te renderen en vertelt ons of het gelukt is.
+            const hasRenderedIcons = renderAllergyIcons(newItem, allergyTextFromXano);
+
+            // 4. Toon of verberg de HELE wrapper op basis van het resultaat.
+            if (hasRenderedIcons) {
+                allergySectionWrapper.style.display = 'block'; 
+            } else {
+                allergySectionWrapper.style.display = 'none';
+            }
         }
-    }
-
-    // --- EINDE NIEUWE LOGICA ---
-
-	// --- START NIEUWE LOGICA: ALLERGIE-ICOONTJES ---
-    
-    // 1. Zoek het 'allergy-source' tekstveld BINNEN dit specifieke item.
-    const allergySourceField = newItem.querySelector('#allergy-source');
-    
-    // 2. Vul dit veld met de data uit Xano.
-    if (allergySourceField) {
-        // Gebruik het juiste veld uit uw Xano response, in dit geval 'review_allergies'
-        const allergyTextFromXano = restaurantData.review_allergies || ""; 
-        allergySourceField.textContent = allergyTextFromXano;
-        
-        // 3. Roep de nieuwe hulpfunctie aan om de icoontjes te renderen.
-        // We geven het hele 'newItem' door als context, en de tekst die we net hebben ingesteld.
-        renderAllergyIcons(newItem, allergyTextFromXano);
-    }
-    
-    // --- EINDE NIEUWE LOGICA ---
+        // --- EINDE ALLERGIE LOGICA ---
         
         const reviewsContainerEl = newItem.querySelector('.recent-reviews-container');
         const review1El = newItem.querySelector('.first-example-review');
