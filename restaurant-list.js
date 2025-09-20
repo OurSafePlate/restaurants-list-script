@@ -1361,7 +1361,7 @@ function renderPageNumbers() {
         followFinger: true,
         freeMode: false,
         slideToClickedSlide: false,
-        slidesPerView: 1,    // Default voor kleinste scherm
+        slidesPerView: 1.5,    // Default voor kleinste scherm
         spaceBetween: "2%",  // Moet een getal zijn in pixels voor Swiper V8, bv. 16 of '2%' als string als V8 dat ondersteunt
                               // Voor Swiper.js is een percentage string voor spaceBetween niet standaard.
                               // Gebruik een getal (pixels) of bereken het percentage. Laten we 16px als voorbeeld nemen.
