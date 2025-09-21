@@ -82,6 +82,8 @@
   let touchStartY = 0;
   let touchCurrentY = 0;
   let userLocation = null;
+  let isDraggingPanel = false; // Houdt bij of we het paneel aan het slepen zijn
+  let scrollableListEl = null; // Een referentie naar de scrollbare lijst
   
 
   // --- CENTRALE STATE VOOR HET PANEEL ---
@@ -954,84 +956,95 @@ function handleTouchStart(e) {
     if (document.getElementById('map-preview-card').classList.contains('is-visible')) {
         closePreviewCard();
     }
+
+	if (!scrollableListEl) {
+    	scrollableListEl = document.querySelector('#map-restaurant-list .w-dyn-items');
+	}
+	
+	if (e.target.closest('.map-sidebar-header')) {
+    	isDraggingPanel = true;
+	} else {
+    	isDraggingPanel = false;
+	}
     
     mapSidebarEl.style.transition = 'none';
     touchStartY = e.touches[0].clientY;
 }
 
 function handleTouchMove(e) {
-    if (touchStartY === 0) return;
+    if (touchStartY === 0 || !scrollableListEl) return;
+    
+    const currentTouchY = e.touches[0].clientY;
+    const diffY = currentTouchY - touchStartY;
+    const isAtTop = scrollableListEl.scrollTop === 0;
 
-	const listEl = mapListContainer; // De lijst met restaurants
-    const isSwipingDown = (e.touches[0].clientY > touchStartY);
-
-    // Als het paneel volledig open is, en de gebruiker is NIET helemaal bovenaan
-    // de lijst OF swipet naar boven, dan laten we de browser scrollen en doen we niets.
-    if (panelState === 'full' && (listEl.scrollTop > 0 || !isSwipingDown)) {
-        return; // Sta native scroll toe
+    // Als de gebruiker omlaag swipet terwijl de lijst bovenaan staat, 
+    // DAN wil hij het paneel slepen. Activeer de sleep-modus.
+    if (!isDraggingPanel && isAtTop && diffY > 0) {
+        isDraggingPanel = true;
+        e.preventDefault(); // Stop de browser-scroll
     }
     
-    // Als we hier zijn, betekent het:
-    // 1. Het paneel is 'collapsed' of 'partial' -> we willen het paneel bewegen.
-    // 2. Het paneel is 'full', maar de gebruiker swipet naar beneden vanaf de top -> "pull-to-close".
-    // In beide gevallen moeten we de native scroll blokkeren.
-    e.preventDefault();
-	
-    touchCurrentY = e.touches[0].clientY;
-    const diffY = touchCurrentY - touchStartY;
-    
-    let currentTranslateY;
-    // Gebruik de class, niet de 'panelState' variabele voor robuustheid
-    if (mapSidebarEl.classList.contains('is-collapsed')) {
-        currentTranslateY = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
-    } else {
-        const currentVh = parseFloat(mapSidebarEl.style.getPropertyValue('--panel-height-vh') || '40');
-        currentTranslateY = window.innerHeight * (1 - currentVh / 100);
+    // Alleen als we in sleep-modus zijn, passen we de transform aan.
+    if (isDraggingPanel) {
+        e.preventDefault(); // Blijf de browser-scroll blokkeren
+        
+        // Uw oorspronkelijke, werkende berekening voor de positie
+        let currentTranslateY;
+        if (mapSidebarEl.classList.contains('is-collapsed')) {
+            currentTranslateY = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
+        } else {
+            const currentVh = parseFloat(mapSidebarEl.style.getPropertyValue('--panel-height-vh') || '40');
+            currentTranslateY = window.innerHeight * (1 - currentVh / 100);
+        }
+        let newY = currentTranslateY + diffY;
+        
+        const minHeightPx = window.innerHeight * 0.1;
+        const maxHeightPx = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
+        newY = Math.max(minHeightPx, Math.min(newY, maxHeightPx));
+        
+        mapSidebarEl.style.transform = `translateY(${newY}px)`;
     }
-    
-    let newY = currentTranslateY + diffY;
-    
-    const minHeightPx = window.innerHeight * 0.1; // 90vh
-    const maxHeightPx = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
-    newY = Math.max(minHeightPx, Math.min(newY, maxHeightPx));
-    
-    mapSidebarEl.style.transform = `translateY(${newY}px)`;
+    // ALS we NIET in 'isDraggingPanel' modus zijn, doet deze functie niets.
+    // De browser handelt dan de native scroll van de lijst af.
 }
 
 function handleTouchEnd() {
     if (touchStartY === 0) return;
     
-    mapSidebarEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
-    const currentPos = mapSidebarEl.getBoundingClientRect().top;
-    const screenHeight = window.innerHeight;
+    // Voer de snap-logica alleen uit als we het paneel daadwerkelijk hebben gesleept.
+    if (isDraggingPanel) {
+        mapSidebarEl.style.transition = 'transform 0.3s ease-out';
+        const currentPos = mapSidebarEl.getBoundingClientRect().top;
+        const screenHeight = window.innerHeight;
 
-    const snapPoints = {
-        full: screenHeight * 0.1,
-        partial: screenHeight * 0.6,
-        collapsed: screenHeight - PANEL_COLLAPSED_HEIGHT
-    };
+        const snapPointHigh = screenHeight * 0.1; 
+        const snapPointMid = screenHeight * 0.6;
+        const snapPointLow = screenHeight - PANEL_COLLAPSED_HEIGHT;
 
-    let closestState = 'collapsed';
-    let minDistance = Infinity;
-    for (const state in snapPoints) {
-        const distance = Math.abs(currentPos - snapPoints[state]);
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestState = state;
+        const distances = [
+            { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
+            { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
+            { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
+        ];
+        const closest = distances.sort((a, b) => a.diff - b.diff)[0];
+
+        if (closest.point === snapPointLow) {
+            mapSidebarEl.classList.add('is-collapsed');
+            mapSidebarEl.style.transform = '';
+            mapSidebarEl.style.removeProperty('--panel-height-vh');
+        } else {
+            mapSidebarEl.classList.remove('is-collapsed');
+            const targetVh = Math.round((screenHeight - closest.point) / screenHeight * 100);
+            mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
+            mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
         }
     }
-    
-    // Dit zorgt ervoor dat de volgende 'handleTouchMove' de juiste startpositie kent.
-    panelState = closestState;
 
-	updateScrollLock(panelState);
-    
-    // Update de visuele positie
-    mapSidebarEl.style.transform = `translateY(${snapPoints[panelState]}px)`;
-
-    // Reset de touch-variabelen
+    // Reset altijd alle states
     touchStartY = 0;
     touchCurrentY = 0;
+    isDraggingPanel = false;
 }
 
 // --- EINDE SWIPE-FUNCTIES ---
