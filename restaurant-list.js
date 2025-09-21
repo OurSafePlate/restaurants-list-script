@@ -1010,43 +1010,45 @@ function handleTouchMove(e) {
 }
 
 function handleTouchEnd() {
-    if (touchStartY === 0) return;
-    
-    // Voer de snap-logica alleen uit als we het paneel daadwerkelijk hebben gesleept.
-    if (isDraggingPanel) {
-        mapSidebarEl.style.transition = 'transform 0.3s ease-out';
-        const currentPos = mapSidebarEl.getBoundingClientRect().top;
-        const screenHeight = window.innerHeight;
+if (isDraggingPanel) {
+if (touchStartY === 0) return;
+code
+Code
+mapSidebarEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+const currentPos = mapSidebarEl.getBoundingClientRect().top;
+const screenHeight = window.innerHeight;
 
-        const snapPointHigh = screenHeight * 0.1; 
-        const snapPointMid = screenHeight * 0.6;
-        const snapPointLow = screenHeight - PANEL_COLLAPSED_HEIGHT;
+const snapPoints = {
+    full: screenHeight * 0.1,
+    partial: screenHeight * 0.6,
+    collapsed: screenHeight - PANEL_COLLAPSED_HEIGHT
+};
 
-        const distances = [
-            { point: snapPointHigh, diff: Math.abs(currentPos - snapPointHigh) },
-            { point: snapPointMid, diff: Math.abs(currentPos - snapPointMid) },
-            { point: snapPointLow, diff: Math.abs(currentPos - snapPointLow) }
-        ];
-        const closest = distances.sort((a, b) => a.diff - b.diff)[0];
-
-        if (closest.point === snapPointLow) {
-            mapSidebarEl.classList.add('is-collapsed');
-            mapSidebarEl.style.transform = '';
-            mapSidebarEl.style.removeProperty('--panel-height-vh');
-        } else {
-            mapSidebarEl.classList.remove('is-collapsed');
-            const targetVh = Math.round((screenHeight - closest.point) / screenHeight * 100);
-            mapSidebarEl.style.transform = `translateY(calc(100% - ${targetVh}vh))`;
-            mapSidebarEl.style.setProperty('--panel-height-vh', targetVh);
-        }
+let closestState = 'collapsed';
+let minDistance = Infinity;
+for (const state in snapPoints) {
+    const distance = Math.abs(currentPos - snapPoints[state]);
+    if (distance < minDistance) {
+        minDistance = distance;
+        closestState = state;
     }
-
-    // Reset altijd alle states
-    touchStartY = 0;
-    touchCurrentY = 0;
-    isDraggingPanel = false;
 }
 
+// Dit zorgt ervoor dat de volgende 'handleTouchMove' de juiste startpositie kent.
+panelState = closestState;
+
+updateScrollLock(panelState);
+
+// Update de visuele positie
+mapSidebarEl.style.transform = `translateY(${snapPoints[panelState]}px)`;
+
+// Reset de touch-variabelen
+touchStartY = 0;
+touchCurrentY = 0;
+}
+isDraggingPanel = false;
+}
+		
 // --- EINDE SWIPE-FUNCTIES ---
 
 // --- RENDER PREVIEW CARD ---
