@@ -1,12 +1,12 @@
-	document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', () => {
   // --- CONFIGURATIE ---
   const API_GROUP_URL = "https://x8ki-letl-twmt.n7.xano.io/api:tNUMBEXY"; // Gebruik overal deze ID
 
-	const API_AUTH_LOGIN = `${API_GROUP_URL}/auth/anonymous_login`;
-	const API_RESTAURANTS_LIST = `${API_GROUP_URL}/restaurants_list`; 
-	const API_RESTAURANTS_SLIDER = `${API_GROUP_URL}/restaurants_for_slider`; 
+  const API_AUTH_LOGIN = `${API_GROUP_URL}/auth/anonymous_login`;
+  const API_RESTAURANTS_LIST = `${API_GROUP_URL}/restaurants_list`; 
+  const API_RESTAURANTS_SLIDER = `${API_GROUP_URL}/restaurants_for_slider`; 
 
-	const DEBUG_LOGGING = true;
+  const DEBUG_LOGGING = true;
   const ITEMS_PER_PAGE = 30; // Pas dit aan naar je Webflow paginatie limiet
   const SLIDER_INJECT_AFTER_N_ITEMS = 5; 
   const API_CALL_RETRIES = 2;
@@ -1356,7 +1356,7 @@ function renderPageNumbers() {
       const swiperInstance = new Swiper(swiperContainer, {
         speed: sliderDuration,
         loop: loopMode,
-        autoHeight: false,
+        autoHeight: true,
         centeredSlides: loopMode, // Alleen zinvol als loopMode true is en slidesPerView < aantal slides
         followFinger: true,
         freeMode: false,
