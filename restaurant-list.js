@@ -1594,10 +1594,18 @@ async function fetchAndDisplayMainList() {
                 }
                 // Slider injectie blijft hier
                 if ((index + 1) % SLIDER_INJECT_AFTER_N_ITEMS === 0 && (index + 1) < data.items.length) {
-                    const sliderDataKeys = allSliderData ? Object.keys(allSliderData) : [];
-                    if (sliderDataKeys.length > 0) {
-                       const sliderKeyToInject = sliderDataKeys[sliderInjectionCounter % sliderDataKeys.length];
-                       if(allSliderData[sliderKeyToInject] && allSliderData[sliderKeyToInject].length > 0){
+                    // 1. Definieer expliciet de gewenste volgorde van de slider keys.
+					const desiredSliderOrder = [
+    					'result_allergy_rating', // Top voor allergieën
+    					'result_email',          // Onze selectie
+    					'result_newest',         // Nieuwkomers
+    					'result_random'          // Willekeurig uitgelicht
+					];
+
+				if (desiredSliderOrder.length > 0) {
+   				// 2. Gebruik je nieuwe, geordende lijst in plaats van de onvoorspelbare 'sliderDataKeys'.
+   					const sliderKeyToInject = desiredSliderOrder[sliderInjectionCounter % desiredSliderOrder.length];
+   					if(allSliderData[sliderKeyToInject] && allSliderData[sliderKeyToInject].length > 0){
                            let sliderTitle = "Aanbevolen";
                            if (sliderKeyToInject === 'result_random') sliderTitle = 'Willekeurig Uitgelicht';
                            else if (sliderKeyToInject === 'result_newest') sliderTitle = 'Nieuwkomers';
