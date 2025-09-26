@@ -1607,10 +1607,10 @@ async function fetchAndDisplayMainList() {
    					const sliderKeyToInject = desiredSliderOrder[sliderInjectionCounter % desiredSliderOrder.length];
    					if(allSliderData[sliderKeyToInject] && allSliderData[sliderKeyToInject].length > 0){
                            let sliderTitle = "Aanbevolen";
-                           if (sliderKeyToInject === 'result_random') sliderTitle = 'Ontdek ook deze restaurants';
-                           else if (sliderKeyToInject === 'result_newest') sliderTitle = 'Nieuw op Our Safe Plate';
-                           else if (sliderKeyToInject === 'result_allergy_rating') sliderTitle = 'Restaurants met de hoogste Our Safe Score';
-                           else if (sliderKeyToInject === 'result_email') sliderTitle = 'De Keuze van Our Safe Plate';
+                           if (sliderKeyToInject === 'result_random') sliderTitle = 'Restaurants ontdekken';
+                           else if (sliderKeyToInject === 'result_newest') sliderTitle = 'Recent toegevoegd';
+                           else if (sliderKeyToInject === 'result_allergy_rating') sliderTitle = 'Top voor allergieën';
+                           else if (sliderKeyToInject === 'result_email') sliderTitle = 'Onze keuze';
                            const placeholderDiv = document.createElement('div');
                            restaurantListWrapperEl.appendChild(placeholderDiv);
                            injectAndRenderSlider(placeholderDiv, sliderKeyToInject, sliderTitle);
