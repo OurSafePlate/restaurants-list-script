@@ -503,7 +503,7 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
   	  		// Gebruik .innerHTML om de structuur te kunnen injecteren.
 			// Dit is veilig omdat we de inhoud zelf bepalen en geen user-input gebruiken.
  	   		const reviewCount = restaurantData.review_count || 0;
-	    	reviewCountEl.innerHTML = `${reviewCount} <span class="review-text">beoordelingen</span>`;
+	    	reviewCountEl.innerHTML = `${reviewCount}<span class="review-text"> beoordelingen</span>`;
 			}
 
         const mealOptEl = newItem.querySelector('.meal-options-output'); 
