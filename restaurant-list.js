@@ -349,14 +349,11 @@ function updateScrollLock(state) {
 function renderAllergyIcons(parentElement, allergyText) {
     const capitalizeFirstLetter = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
 
-    // We zoeken nu direct naar de HOOFDCONTAINER.
     const container = parentElement.querySelector('.allergy-icon-container');
     if (!container) {
-        // Als zelfs de hoofdcontainer niet bestaat, stop dan.
         return false;
     }
 
-    // Maak de container leeg voor nieuwe inhoud.
     container.innerHTML = "";
 
     if (!allergyText || typeof allergyText !== 'string') {
@@ -368,14 +365,32 @@ function renderAllergyIcons(parentElement, allergyText) {
     if (allergies.length === 0) {
         return false;
     }
-    
-    // De Kern: Loop door ELKE allergie en maak er een div voor aan.
-    allergies.forEach(allergy => {
+
+    // --- DE NIEUWE LOGICA BEGINT HIER ---
+
+    // 1. Definieer het maximum aantal tags dat we willen tonen.
+    const maxTagsToShow = 3;
+
+    // 2. Maak een nieuwe, kortere array met alleen de eerste 3 items.
+    const allergiesToShow = allergies.slice(0, maxTagsToShow);
+
+    // 3. Loop alleen door de kortere array om de divs te maken.
+    allergiesToShow.forEach(allergy => {
         const div = document.createElement('div');
         div.className = 'button is-xsmall allergy-tag'; 
         div.textContent = capitalizeFirstLetter(allergy);
         container.appendChild(div);
     });
+
+    // 4. Controleer of de originele array MEER items had dan ons maximum.
+    if (allergies.length > maxTagsToShow) {
+        // Zo ja, maak een "..." element en voeg het toe.
+        const moreIndicator = document.createElement('div');
+        // Geef het een aparte class voor eventuele styling.
+        moreIndicator.className = 'allergy-tag-more'; 
+        moreIndicator.textContent = '...';
+        container.appendChild(moreIndicator);
+    }
     
     return true;
 }
