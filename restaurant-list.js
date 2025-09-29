@@ -346,59 +346,40 @@ function updateScrollLock(state) {
   });
 }
 
-// --- NIEUWE HERBRUIKBARE FUNCTIE VOOR ALLERGIE-ICOONTJES ---
 function renderAllergyIcons(parentElement, allergyText) {
-  // Definieer de "woordenboek" map BINNEN de functie
-  const allergyIconMap = {
-    "ei allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0af5f0966589c0bc75a_ei.png",
-    "ei-intolerantie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0af5f0966589c0bc75a_ei.png",
-    "glutenbevattende granen allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0afed7adf1139c811c8_gluten.png",
-    "glutenovergevoeligheid (zonder coeliakie)": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0afed7adf1139c811c8_gluten.png",
-    "melkallergie (koemelk)": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0ae9cbc248d9691a00b_melk.png",
-    "lactose-intolerantie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0ae9cbc248d9691a00b_melk.png",
-    "lupine allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0afd5025c5d7a13b0dd_lupine.png",
-    "mosterd allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0ae9d789b79b07dda42_mosterd.png",
-    "noten allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0b1e14f0cb8d003fca1_noten.png",
-    "pinda allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0aff30648cc671ee3d2_pindas.png",
-    "schaaldieren allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0ae7c1173f8e0a6116a_schaald.png",
-    "selderij allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0b1074f4e4f53a33db0_selderij.png",
-    "sesamzaad allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0b05f0966589c0bc81d_sesamzaad.png",
-    "soja allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0b0ecf980276bd93d3b_soja.png",
-    "soja-intolerantie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0b0ecf980276bd93d3b_soja.png",
-    "vis allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0b0337d460e04f1644a_vis.png",
-    "weekdieren allergie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/6808e0b111bf1e6f46eed61b_weekdieren.png",
-    "fructose-intolerantie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/68613ac408fa5f77d9c5e9b9_Ontwerp%20zonder%20titel%20(25).png",
-    "histamine-intolerantie": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/68613bba4ef175a5beb49955_Ontwerp%20zonder%20titel%20(26).png",
-    "salicylaatovergevoeligheid": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/68613d2c9921aea0c284ea36_Ontwerp%20zonder%20titel%20(27).png",
-    "sulfietovergevoeligheid": "https://cdn.prod.website-files.com/67ec1f5e9ca7126309c2348f/68613e0d4979f309dcab57ec_Ontwerp%20zonder%20titel%20(29).png",
-  };
-
   const capitalizeFirstLetter = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
-  // Zoek de doel-container BINNEN het specifieke parentElement
-  const targetElement = parentElement.querySelector('.allergy-icon-container');
-  if (!targetElement) return false;
-
-  const allergiesArray = (allergyText || "").toLowerCase().split(',').map(s => s.trim()).filter(s => s);
-  
-  targetElement.innerHTML = "";
-
-  if (allergiesArray.length > 0) {
-    const iconsHTML = allergiesArray.map(key =>
-      allergyIconMap[key]
-        ? `<img src="${allergyIconMap[key]}" alt="${capitalizeFirstLetter(key)}" title="${capitalizeFirstLetter(key)}" class="allergy-icon-class">`
-        : ""
-    ).join('');
-    
-    targetElement.innerHTML = iconsHTML;
+  // Zoek de doel-container BINNEN het specifieke parentElement.
+  // We zoeken nu naar de 'wrapper' omdat 'container' misschien verwarrend is met de bovenliggende div.
+  const targetWrapper = parentElement.querySelector('.allergy-icons-wrapper'); 
+  if (!targetWrapper) {
+    // console.log("Target wrapper (.allergy-icons-wrapper) niet gevonden in:", parentElement);
+    return false; // Container niet gevonden, stop.
   }
 
-if (targetElement.children.length > 0) {
-        return true; // SUCCES: Er zijn icoontjes, geef 'true' terug.
-    } else {
-        return false; // MISLUKT: Er zijn geen icoontjes, geef 'false' terug.
-    }
-	
+  // Maak de container leeg voor nieuwe inhoud.
+  targetWrapper.innerHTML = ""; 
+
+  // Verwerk de string naar een schone, bruikbare array.
+  const allergiesArray = (allergyText || "").toLowerCase().split(',').map(s => s.trim()).filter(s => s);
+  
+  // Als er na het opschonen geen allergieën zijn, geef 'false' terug.
+  // Dit zorgt ervoor dat de hele sectie verborgen wordt!
+  if (allergiesArray.length === 0) {
+    return false;
+  }
+  
+  // Genereer voor elke allergie een div met de juiste classes.
+  allergiesArray.forEach(allergy => {
+    const div = document.createElement('div');
+    // Gebruik de combo class 'allergy-tag' voor specifieke styling.
+    div.className = 'button is-xsmall allergy-tag'; 
+    div.textContent = capitalizeFirstLetter(allergy);
+    targetWrapper.appendChild(div);
+  });
+  
+  // Vertel de aanroepende functie dat we succesvol tags hebben weergegeven.
+  return true;
 }
 	
   // --- FUNCTIE OM TEKST IN TE KORTEN ---
