@@ -347,39 +347,46 @@ function updateScrollLock(state) {
 }
 
 function renderAllergyIcons(parentElement, allergyText) {
-  const capitalizeFirstLetter = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+    
+    // Functie om de eerste letter van een string een hoofdletter te maken.
+    const capitalizeFirstLetter = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
 
-  // Zoek de doel-container BINNEN het specifieke parentElement.
-  // We zoeken nu naar de 'wrapper' omdat 'container' misschien verwarrend is met de bovenliggende div.
-  const targetWrapper = parentElement.querySelector('.allergy-icons-wrapper'); 
-  if (!targetWrapper) {
-    // console.log("Target wrapper (.allergy-icons-wrapper) niet gevonden in:", parentElement);
-    return false; // Container niet gevonden, stop.
-  }
+    // Zoek de container BINNEN het restaurant-kaartje waar de tags moeten komen.
+    const container = parentElement.querySelector('.allergy-icons-wrapper');
+    if (!container) {
+        // Als de .allergy-icons-wrapper div niet bestaat in de Webflow structuur, stop dan.
+        return false;
+    }
 
-  // Maak de container leeg voor nieuwe inhoud.
-  targetWrapper.innerHTML = ""; 
+    // Maak de container leeg voor het geval er oude data in staat.
+    container.innerHTML = "";
 
-  // Verwerk de string naar een schone, bruikbare array.
-  const allergiesArray = (allergyText || "").toLowerCase().split(',').map(s => s.trim()).filter(s => s);
-  
-  // Als er na het opschonen geen allergieën zijn, geef 'false' terug.
-  // Dit zorgt ervoor dat de hele sectie verborgen wordt!
-  if (allergiesArray.length === 0) {
-    return false;
-  }
-  
-  // Genereer voor elke allergie een div met de juiste classes.
-  allergiesArray.forEach(allergy => {
-    const div = document.createElement('div');
-    // Gebruik de combo class 'allergy-tag' voor specifieke styling.
-    div.className = 'button is-xsmall allergy-tag'; 
-    div.textContent = capitalizeFirstLetter(allergy);
-    targetWrapper.appendChild(div);
-  });
-  
-  // Vertel de aanroepende functie dat we succesvol tags hebben weergegeven.
-  return true;
+    // Als er geen allergie-tekst is, stop dan.
+    if (!allergyText || typeof allergyText !== 'string') {
+        return false;
+    }
+
+    // Verwerk de tekst-string naar een schone array van allergieën.
+    // .filter(Boolean) is een snelle manier om lege strings te verwijderen.
+    const allergies = allergyText.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+
+    // Als er na het opschonen geen allergieën over zijn, stop dan.
+    if (allergies.length === 0) {
+        return false;
+    }
+    
+    // De Kern van de Oplossing:
+    // Loop door ELKE allergie in de array en maak er een div voor aan.
+    allergies.forEach(allergy => {
+        const div = document.createElement('div');
+        // Geef het de classes die u wilt voor de styling.
+        div.className = 'button is-xsmall allergy-tag'; 
+        div.textContent = capitalizeFirstLetter(allergy);
+        container.appendChild(div);
+    });
+    
+    // Geef een signaal terug dat we succesvol tags hebben toegevoegd.
+    return true;
 }
 	
   // --- FUNCTIE OM TEKST IN TE KORTEN ---
