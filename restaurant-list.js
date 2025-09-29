@@ -347,45 +347,36 @@ function updateScrollLock(state) {
 }
 
 function renderAllergyIcons(parentElement, allergyText) {
-    
-    // Functie om de eerste letter van een string een hoofdletter te maken.
     const capitalizeFirstLetter = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
 
-    // Zoek de container BINNEN het restaurant-kaartje waar de tags moeten komen.
-    const container = parentElement.querySelector('.allergy-icons-wrapper');
+    // We zoeken nu direct naar de HOOFDCONTAINER.
+    const container = parentElement.querySelector('.allergy-icon-container');
     if (!container) {
-        // Als de .allergy-icons-wrapper div niet bestaat in de Webflow structuur, stop dan.
+        // Als zelfs de hoofdcontainer niet bestaat, stop dan.
         return false;
     }
 
-    // Maak de container leeg voor het geval er oude data in staat.
+    // Maak de container leeg voor nieuwe inhoud.
     container.innerHTML = "";
 
-    // Als er geen allergie-tekst is, stop dan.
     if (!allergyText || typeof allergyText !== 'string') {
         return false;
     }
 
-    // Verwerk de tekst-string naar een schone array van allergieën.
-    // .filter(Boolean) is een snelle manier om lege strings te verwijderen.
     const allergies = allergyText.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
 
-    // Als er na het opschonen geen allergieën over zijn, stop dan.
     if (allergies.length === 0) {
         return false;
     }
     
-    // De Kern van de Oplossing:
-    // Loop door ELKE allergie in de array en maak er een div voor aan.
+    // De Kern: Loop door ELKE allergie en maak er een div voor aan.
     allergies.forEach(allergy => {
         const div = document.createElement('div');
-        // Geef het de classes die u wilt voor de styling.
         div.className = 'button is-xsmall allergy-tag'; 
         div.textContent = capitalizeFirstLetter(allergy);
         container.appendChild(div);
     });
     
-    // Geef een signaal terug dat we succesvol tags hebben toegevoegd.
     return true;
 }
 	
