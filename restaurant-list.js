@@ -554,20 +554,30 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
 
 	// --- START ALLERGIE LOGICA ---
         const allergySectionWrapper = newItem.querySelector('.allergy-icon-container');
+// Selecteer ook het titel-element.
+const allergyTitleElement = newItem.querySelector('.allergy-title-icons');
 
-if (allergySectionWrapper) {
+// We controleren nu of BEIDE elementen bestaan voordat we verdergaan.
+if (allergySectionWrapper && allergyTitleElement) {
     const allergyTextFromXano = restaurantData.review_allergies || ""; 
     const hasRenderedIcons = renderAllergyIcons(newItem, allergyTextFromXano);
 
-    // 4. Toon of verberg de HELE wrapper VOLLEDIG.
     if (hasRenderedIcons) {
-        // Maak de container ZICHTBAAR en geef hem ruimte
-        allergySectionWrapper.style.display = 'flex'; // Gebruik 'flex' voor betere uitlijning
-        allergySectionWrapper.style.height = 'auto';  // Herstel de hoogte
-        allergySectionWrapper.style.opacity = '1';    // Maak het volledig zichtbaar
+        // Maak de container met tags ZICHTBAAR en geef hem ruimte
+        allergySectionWrapper.style.display = 'flex'; 
+        allergySectionWrapper.style.height = 'auto';  
+        allergySectionWrapper.style.opacity = '1';
+        
+        // Maak ook de TITEL zichtbaar.
+        // 'block' is een veilige keuze voor een titelcontainer.
+        allergyTitleElement.style.display = 'block';
+
     } else {
-        // Verberg de container volledig
+        // Verberg de container met tags volledig
         allergySectionWrapper.style.display = 'none';
+
+        // Zorg ervoor dat de TITEL ook verborgen is.
+        allergyTitleElement.style.display = 'none';
     }
 }
         // --- EINDE ALLERGIE LOGICA ---
