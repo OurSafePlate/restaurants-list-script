@@ -540,24 +540,23 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
         renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', allergyRatingValue);
 
 	// --- START ALLERGIE LOGICA ---
-        // 1. Zoek de complete wrapper van de allergie-sectie.
         const allergySectionWrapper = newItem.querySelector('.allergy-icon-container');
 
-        if (allergySectionWrapper) {
-            // 2. Haal de allergie-tekst op uit de Xano data.
-            const allergyTextFromXano = restaurantData.review_allergies || ""; 
+if (allergySectionWrapper) {
+    const allergyTextFromXano = restaurantData.review_allergies || ""; 
+    const hasRenderedIcons = renderAllergyIcons(newItem, allergyTextFromXano);
 
-            // 3. Roep de renderAllergyIcons functie aan en VANG HET RESULTAAT OP.
-            // De functie probeert de icoontjes te renderen en vertelt ons of het gelukt is.
-            const hasRenderedIcons = renderAllergyIcons(newItem, allergyTextFromXano);
-
-            // 4. Toon of verberg de HELE wrapper op basis van het resultaat.
-            if (hasRenderedIcons) {
-                allergySectionWrapper.style.display = 'block'; 
-            } else {
-                allergySectionWrapper.style.display = 'none';
-            }
-        }
+    // 4. Toon of verberg de HELE wrapper VOLLEDIG.
+    if (hasRenderedIcons) {
+        // Maak de container ZICHTBAAR en geef hem ruimte
+        allergySectionWrapper.style.display = 'flex'; // Gebruik 'flex' voor betere uitlijning
+        allergySectionWrapper.style.height = 'auto';  // Herstel de hoogte
+        allergySectionWrapper.style.opacity = '1';    // Maak het volledig zichtbaar
+    } else {
+        // Verberg de container volledig
+        allergySectionWrapper.style.display = 'none';
+    }
+}
         // --- EINDE ALLERGIE LOGICA ---
         
         const reviewsContainerEl = newItem.querySelector('.recent-reviews-container');
