@@ -349,50 +349,42 @@ function updateScrollLock(state) {
 function renderAllergyIcons(parentElement, allergyText) {
     const capitalizeFirstLetter = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
 
-    const container = parentElement.querySelector('.allergy-icon-container');
-    if (!container) {
-        return false;
-    }
-
-    container.innerHTML = "";
-
+    // We hebben de parent niet meer nodig om iets BINNENIN te zoeken, dus deze functie is nu zelfvoorzienend.
+    
     if (!allergyText || typeof allergyText !== 'string') {
-        return false;
+        return ""; // Geef een lege string terug, geen 'false' meer.
     }
 
     const allergies = allergyText.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
 
     if (allergies.length === 0) {
-        return false;
+        return ""; // Geef een lege string terug.
     }
 
-    // --- DE NIEUWE LOGICA BEGINT HIER ---
-
-    // 1. Definieer het maximum aantal tags dat we willen tonen.
     const maxTagsToShow = 3;
-
-    // 2. Maak een nieuwe, kortere array met alleen de eerste 3 items.
     const allergiesToShow = allergies.slice(0, maxTagsToShow);
 
-    // 3. Loop alleen door de kortere array om de divs te maken.
-    allergiesToShow.forEach(allergy => {
-        const div = document.createElement('div');
-        div.className = 'button is-xsmall allergy-tag'; 
-        div.textContent = capitalizeFirstLetter(allergy);
-        container.appendChild(div);
-    });
+    // Bouw de HTML voor de tags.
+    let tagsHTML = allergiesToShow.map(allergy => {
+        return `<div class="button is-xsmall allergy-tag">${capitalizeFirstLetter(allergy)}</div>`;
+    }).join('');
 
-    // 4. Controleer of de originele array MEER items had dan ons maximum.
+    // Voeg de "..." indicator toe indien nodig.
     if (allergies.length > maxTagsToShow) {
-        // Zo ja, maak een "..." element en voeg het toe.
-        const moreIndicator = document.createElement('div');
-        // Geef het een aparte class voor eventuele styling.
-        moreIndicator.className = 'allergy-tag-more'; 
-        moreIndicator.textContent = '...';
-        container.appendChild(moreIndicator);
+        tagsHTML += `<div class="allergy-tag-more">...</div>`;
     }
-    
-    return true;
+
+    // DE KERN VAN DE OPLOSSING:
+    // Bouw de VOLLEDIGE component (titel + tags) als één enkele HTML-string.
+    const finalHTML = `
+        <div class="allergy-title-icons hide-mobile-landscape" style="display: block;">Allergieën</div>
+        <div class="allergy-icons-wrapper" style="display: flex; flex-wrap: wrap;">
+            ${tagsHTML}
+        </div>
+    `;
+
+    // Geef de complete HTML terug.
+    return finalHTML;
 }
 	
   // --- FUNCTIE OM TEKST IN TE KORTEN ---
@@ -553,31 +545,26 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
         renderRatingVisuals(newItem, '.restaurants_rating-star-wrap.restaurants_rating_allergy-wrap', allergyRatingValue);
 
 	// --- START ALLERGIE LOGICA ---
-        const allergyContainerElement = newItem.querySelector('.allergy-icon-container');
-const allergyTitleElement = newItem.querySelector('.allergy-title-icons.hide-mobile-landscape');
+        const allergySectionWrapper = newItem.querySelector('.allergy-icon-container');
 
-if (allergyContainerElement) {
+if (allergySectionWrapper) {
     const allergyTextFromXano = restaurantData.review_allergies || ""; 
-    const hasRenderedIcons = renderAllergyIcons(newItem, allergyTextFromXano);
-
-    if (hasRenderedIcons) {
-    allergyContainerElement.style.display = 'flex'; 
-    allergyContainerElement.style.height = 'auto';  
-    allergyContainerElement.style.opacity = '1';
     
-    // De nieuwe, veilige check
-    if (allergyTitleElement) {
-        allergyTitleElement.style.display = 'block';
-    }
+    // Roep de functie aan die de VOLLEDIGE HTML (titel + tags) genereert.
+    const allergyHTML = renderAllergyIcons(newItem, allergyTextFromXano);
+    
+    // Injecteer de HTML. Als de string leeg is, wordt er niets getoond.
+    allergySectionWrapper.innerHTML = allergyHTML;
 
-} else {
-    allergyContainerElement.style.display = 'none';
-
-    // De nieuwe, veilige check
-    if (allergyTitleElement) {
-        allergyTitleElement.style.display = 'none';
+    // Maak de hoofdcontainer zichtbaar ALS er inhoud is.
+    if (allergyHTML) {
+        allergySectionWrapper.style.display = 'block'; // Of 'flex', afhankelijk van de gewenste layout van de titel t.o.v. de tags. 'block' is waarschijnlijk wat u wilt.
+        allergySectionWrapper.style.height = 'auto';
+        allergySectionWrapper.style.opacity = '1';
+    } else {
+        allergySectionWrapper.style.display = 'none';
     }
-	}		
+}		
 }
         // --- EINDE ALLERGIE LOGICA ---
         
