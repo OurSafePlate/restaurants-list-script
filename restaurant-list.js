@@ -377,7 +377,7 @@ function renderAllergyIcons(parentElement, allergyText) {
     // DE KERN VAN DE OPLOSSING:
     // Bouw de VOLLEDIGE component (titel + tags) als één enkele HTML-string.
     const finalHTML = `
-        <div class="allergy-title-icons hide-mobile-landscape" style="display: block;">Allergieën</div>
+        <div class="allergy-title-icons hide-mobile-landscape" style="display: block;">Dieetwensen vermeld in reviews</div>
         <div class="allergy-icons-wrapper" style="display: flex; flex-wrap: wrap;">
             ${tagsHTML}
         </div>
