@@ -577,6 +577,7 @@ if (allergyContainerElement) {
     if (allergyTitleElement) {
         allergyTitleElement.style.display = 'none';
     }
+	}		
 }
         // --- EINDE ALLERGIE LOGICA ---
         
