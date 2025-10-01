@@ -565,7 +565,6 @@ if (allergySectionWrapper) {
         allergySectionWrapper.style.display = 'none';
     }
 }		
-}
         // --- EINDE ALLERGIE LOGICA ---
         
         const reviewsContainerEl = newItem.querySelector('.recent-reviews-container');
