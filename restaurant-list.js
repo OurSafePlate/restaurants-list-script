@@ -555,7 +555,7 @@ function renderRestaurantItem(restaurantData, isForSlider = false) {
 	// --- START ALLERGIE LOGICA ---
         const allergySectionWrapper = newItem.querySelector('.allergy-icon-container');
 // Selecteer ook het titel-element.
-const allergyTitleElement = newItem.querySelector('.allergy-title-icons');
+const allergyTitleElement = newItem.querySelector('.allergy-title-icons.hide-mobile-landscape');
 
 // We controleren nu of BEIDE elementen bestaan voordat we verdergaan.
 if (allergySectionWrapper && allergyTitleElement) {
