@@ -953,28 +953,39 @@ function handleTouchStart(e) {
 }
 
 function handleTouchMove(e) {
-    if (touchStartY === 0) return;
+    if (touchStartY === 0 || !mapSidebarEl) return;
 
-	const listEl = mapListContainer; // De lijst met restaurants
-    const isSwipingDown = (e.touches[0].clientY > touchStartY);
+    const listEl = mapListContainer;
+    const currentY = e.touches[0].clientY;
+    const isSwipingDown = currentY > touchStartY;
 
-    // Als het paneel volledig open is, en de gebruiker is NIET helemaal bovenaan
-    // de lijst OF swipet naar boven, dan laten we de browser scrollen en doen we niets.
-    if (panelState === 'full' && (!isSwipingDown || listEl.scrollTop > 1)) {
-        return; // Sta native scroll toe
+    // Als het paneel volledig open is en de gebruiker naar beneden veegt
+    // terwijl ze PRECIES bovenaan de lijst zijn...
+    if (panelState === 'full' && isSwipingDown && listEl.scrollTop === 0) {
+        // ...dan nemen WIJ de controle over om het paneel te sluiten
+        // en stoppen we de standaard browser-actie (de "bounce").
+        e.preventDefault();
+    } else if (panelState === 'full') {
+        // In ALLE ANDERE gevallen wanneer het paneel vol is (omhoog swipen,
+        // of omlaag swipen in het midden van de lijst), laten we de browser
+        // de native scroll afhandelen en doen we NIETS.
+        return;
     }
-    
-    // Als we hier zijn, betekent het:
-    // 1. Het paneel is 'collapsed' of 'partial' -> we willen het paneel bewegen.
-    // 2. Het paneel is 'full', maar de gebruiker swipet naar beneden vanaf de top -> "pull-to-close".
-    // In beide gevallen moeten we de native scroll blokkeren.
-    e.preventDefault();
-	
-    touchCurrentY = e.touches[0].clientY;
+
+    // Als het paneel NIET volledig open is ('collapsed' of 'partial'),
+    // nemen we altijd de controle over om het te verplaatsen.
+    // We moeten hier ook preventDefault() aanroepen voor het geval de 'full' conditie
+    // hierboven is gepasseerd (de "pull-to-close" actie).
+    if (panelState !== 'full' || (isSwipingDown && listEl.scrollTop === 0)) {
+        e.preventDefault();
+    } else {
+        return; // Dubbele check om zeker te zijn dat scrollen doorgaat.
+    }
+
+    touchCurrentY = currentY;
     const diffY = touchCurrentY - touchStartY;
     
     let currentTranslateY;
-    // Gebruik de class, niet de 'panelState' variabele voor robuustheid
     if (mapSidebarEl.classList.contains('is-collapsed')) {
         currentTranslateY = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
     } else {
