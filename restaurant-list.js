@@ -764,8 +764,6 @@ function handleMarkerClick(id) {
         renderPreviewCard(restaurant);
         document.getElementById('map-preview-card').classList.add('is-visible');
         if(mapSidebarEl) mapSidebarEl.classList.add('is-hidden-by-preview');
-		document.documentElement.classList.add('is-scroll-locked');
-		document.body.classList.add('is-scroll-locked');
 
         const targetLatLng = [restaurant.geo_location.data.lat, restaurant.geo_location.data.lng];
         map.flyTo(targetLatLng, 16);
@@ -1119,8 +1117,6 @@ function closePreviewCard(event) {
     
     document.getElementById('map-preview-card').classList.remove('is-visible');
     mapSidebarEl.classList.remove('is-hidden-by-preview');
-	document.documentElement.classList.remove('is-scroll-locked');
-	document.body.classList.remove('is-scroll-locked');
     
     Object.values(markers).forEach(m => m.setZIndexOffset(0));
 }
