@@ -960,7 +960,7 @@ function handleTouchMove(e) {
 
     // Als het paneel volledig open is, en de gebruiker is NIET helemaal bovenaan
     // de lijst OF swipet naar boven, dan laten we de browser scrollen en doen we niets.
-    if (panelState === 'full' && (!isSwipingDown || listEl.scrollTop > 0)) {
+    if (panelState === 'full' && (!isSwipingDown || listEl.scrollTop > 1)) {
         return; // Sta native scroll toe
     }
     
