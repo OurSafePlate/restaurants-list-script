@@ -1739,11 +1739,16 @@ async function initializeSite() {
 
     // Dit blok is uit de click-listener gehaald en hier geplaatst.
     if (mapSidebarEl && window.innerWidth <= 767) {
-    log("Mobiel apparaat gedetecteerd. Swipe-listeners worden EENMALIG gekoppeld aan het HELE paneel.");
-    // De listeners worden nu aan het hele zijpaneel gekoppeld, niet alleen de header.
-    mapSidebarEl.addEventListener('touchstart', handleTouchStart, { passive: true }); // passive: true is beter voor performance bij start
-    mapSidebarEl.addEventListener('touchmove', handleTouchMove, { passive: false }); // passive: false is NODIG om preventDefault te kunnen gebruiken
-    mapSidebarEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+    log("Mobiel apparaat gedetecteerd. Swipe-listeners worden gekoppeld aan de .map-sidebar-header.");
+    const mapSidebarHeader = mapSidebarEl.querySelector('.map-sidebar-header');
+
+    if (mapSidebarHeader) {
+        mapSidebarHeader.addEventListener('touchstart', handleTouchStart, { passive: true });
+        mapSidebarHeader.addEventListener('touchmove', handleTouchMove, { passive: false });
+        mapSidebarHeader.addEventListener('touchend', handleTouchEnd, { passive: true });
+    } else {
+        log("Fout: .map-sidebar-header niet gevonden. Swipe functionaliteit is niet actief.");
+    }
 }
     // Aparte listeners voor 'input' en 'change'
     if (searchInputEl) searchInputEl.addEventListener('input', () => setTimeout(() => handleFilterChange(), SEARCH_DEBOUNCE_DELAY));
