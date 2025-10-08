@@ -200,13 +200,6 @@ function requestUserLocation() {
     		(position) => {
         		userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
         		log(`Locatie gevonden: ${userLocation.lat}, ${userLocation.lng}`);
-
-        		// Voer de essentiële acties hier uit ZODRA de locatie bekend is.
-        		if (map) { // Zorg ervoor dat de kaart al is geïnitialiseerd
-            		map.flyTo([userLocation.lat, userLocation.lng], 14);
-            		handleSearchArea(); // Dit laadt de restaurants op de kaart
-        		}
-        		fetchAndDisplayMainList(); // Dit laadt de restaurants in de hoofdlijst
         
         		resolve();
             },
@@ -653,6 +646,14 @@ function initMap() {
     });
 
     if (navigator.geolocation) {
+
+		if (userLocation) {
+        log("Locatie al bekend bij initialisatie kaart. Kaart centreren.");
+        map.flyTo([userLocation.lat, userLocation.lng], 14);
+        handleSearchArea(); // Laad de restaurants op de kaart.
+    }
+
+		
     log("Browser ondersteunt geolocatie. Start live locatie volgen voor marker...");
     
     navigator.geolocation.watchPosition(
@@ -1801,6 +1802,9 @@ if (mainFilterForm) {
         if(document.querySelector('[fs-cmsload-element="loader"]')) {
             document.querySelector('[fs-cmsload-element="loader"]').style.display = 'block';
         }
+
+		
+		
 		await requestUserLocation();
         await getAuthToken(); // Wacht tot het token er is
         await fetchAllSliderDataOnce(); // Wacht tot slider data er is
