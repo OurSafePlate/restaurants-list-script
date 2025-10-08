@@ -655,7 +655,7 @@ function initMap() {
             log("flyTo animatie voltooid. Marker wordt getekend en restaurants worden geladen.");
             updateUserLocationMarker(); // Teken de marker pas nu.			
         	handleSearchArea(); // Laad de restaurants op de kaart.
-    }
+    });
 
 		
     // Start de live-tracking voor het bolletje, los van de initiële zoom.
