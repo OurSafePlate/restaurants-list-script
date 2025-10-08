@@ -953,52 +953,30 @@ function handleTouchStart(e) {
 }
 
 function handleTouchMove(e) {
-    if (touchStartY === 0 || !mapSidebarEl) return;
+    if (touchStartY === 0) return;
 
-    const listEl = mapListContainer;
-    const currentY = e.touches[0].clientY;
-    const isSwipingDown = currentY > touchStartY;
+    // Aangezien deze listener nu alleen op de header zit,
+    // moeten we ALTIJD de standaard browser-actie (zoals scrollen) voorkomen.
+    e.preventDefault();
 
-    // Als het paneel volledig open is en de gebruiker naar beneden veegt
-    // terwijl ze PRECIES bovenaan de lijst zijn...
-    if (panelState === 'full' && isSwipingDown && listEl.scrollTop === 0) {
-        // ...dan nemen WIJ de controle over om het paneel te sluiten
-        // en stoppen we de standaard browser-actie (de "bounce").
-        e.preventDefault();
-    } else if (panelState === 'full') {
-        // In ALLE ANDERE gevallen wanneer het paneel vol is (omhoog swipen,
-        // of omlaag swipen in het midden van de lijst), laten we de browser
-        // de native scroll afhandelen en doen we NIETS.
-        return;
-    }
-
-    // Als het paneel NIET volledig open is ('collapsed' of 'partial'),
-    // nemen we altijd de controle over om het te verplaatsen.
-    // We moeten hier ook preventDefault() aanroepen voor het geval de 'full' conditie
-    // hierboven is gepasseerd (de "pull-to-close" actie).
-    if (panelState !== 'full' || (isSwipingDown && listEl.scrollTop === 0)) {
-        e.preventDefault();
-    } else {
-        return; // Dubbele check om zeker te zijn dat scrollen doorgaat.
-    }
-
-    touchCurrentY = currentY;
+    touchCurrentY = e.touches[0].clientY;
     const diffY = touchCurrentY - touchStartY;
-    
+
     let currentTranslateY;
     if (mapSidebarEl.classList.contains('is-collapsed')) {
         currentTranslateY = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
     } else {
-        const currentVh = parseFloat(mapSidebarEl.style.getPropertyValue('--panel-height-vh') || '40');
-        currentTranslateY = window.innerHeight * (1 - currentVh / 100);
+        // Gebruik de bounding rect voor een betrouwbaardere startpositie dan de state.
+        const rect = mapSidebarEl.getBoundingClientRect();
+        currentTranslateY = rect.top;
     }
-    
+
     let newY = currentTranslateY + diffY;
-    
+
     const minHeightPx = window.innerHeight * 0.1; // 90vh
     const maxHeightPx = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
     newY = Math.max(minHeightPx, Math.min(newY, maxHeightPx));
-    
+
     mapSidebarEl.style.transform = `translateY(${newY}px)`;
 }
 
