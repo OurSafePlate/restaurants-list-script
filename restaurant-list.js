@@ -82,6 +82,7 @@
   let touchStartY = 0;
   let touchCurrentY = 0;
   let userLocation = null;
+  let isDraggingPanel = false;
   
 
   // --- CENTRALE STATE VOOR HET PANEEL ---
@@ -943,48 +944,33 @@ function displayDataOnMap(restaurants) {
 // --- START SWIPE-FUNCTIES ---
 
 function handleTouchStart(e) {
-    // Belangrijk: als de preview zichtbaar was, verberg hem en toon de lijst
     if (document.getElementById('map-preview-card').classList.contains('is-visible')) {
         closePreviewCard();
     }
-    
-    mapSidebarEl.style.transition = 'none';
-    touchStartY = e.touches[0].clientY;
+
+    // Bepaal hier de intentie van de gebruiker.
+    const headerEl = e.target.closest('.map-sidebar-header');
+    if (headerEl) {
+        isDraggingPanel = true;
+        mapSidebarEl.style.transition = 'none';
+        touchStartY = e.touches[0].clientY;
+    }
 }
 
 function handleTouchMove(e) {
-    if (touchStartY === 0 || !mapSidebarEl) return;
-
-    const listEl = mapListContainer;
-    const currentY = e.touches[0].clientY;
-    const isSwipingDown = currentY > touchStartY;
-
-    // Als het paneel volledig open is en de gebruiker naar beneden veegt
-    // terwijl ze PRECIES bovenaan de lijst zijn...
-    if (panelState === 'full' && isSwipingDown && listEl.scrollTop === 0) {
-        // ...dan nemen WIJ de controle over om het paneel te sluiten
-        // en stoppen we de standaard browser-actie (de "bounce").
-        e.preventDefault();
-    } else if (panelState === 'full') {
-        // In ALLE ANDERE gevallen wanneer het paneel vol is (omhoog swipen,
-        // of omlaag swipen in het midden van de lijst), laten we de browser
-        // de native scroll afhandelen en doen we NIETS.
+    // DE FIX: Als we niet de header aan het slepen zijn, doe dan absoluut niets.
+    if (!isDraggingPanel) {
         return;
     }
 
-    // Als het paneel NIET volledig open is ('collapsed' of 'partial'),
-    // nemen we altijd de controle over om het te verplaatsen.
-    // We moeten hier ook preventDefault() aanroepen voor het geval de 'full' conditie
-    // hierboven is gepasseerd (de "pull-to-close" actie).
-    if (panelState !== 'full' || (isSwipingDown && listEl.scrollTop === 0)) {
-        e.preventDefault();
-    } else {
-        return; // Dubbele check om zeker te zijn dat scrollen doorgaat.
-    }
+    // Als we hier zijn, betekent het dat we de header slepen.
+    // Blokkeer de browser en verplaats het paneel.
+    e.preventDefault();
 
-    touchCurrentY = currentY;
+    touchCurrentY = e.touches[0].clientY;
     const diffY = touchCurrentY - touchStartY;
     
+    // --- DE BEWEGINGSLOGICA (ongewijzigd) ---
     let currentTranslateY;
     if (mapSidebarEl.classList.contains('is-collapsed')) {
         currentTranslateY = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
@@ -992,17 +978,18 @@ function handleTouchMove(e) {
         const currentVh = parseFloat(mapSidebarEl.style.getPropertyValue('--panel-height-vh') || '40');
         currentTranslateY = window.innerHeight * (1 - currentVh / 100);
     }
-    
     let newY = currentTranslateY + diffY;
-    
-    const minHeightPx = window.innerHeight * 0.1; // 90vh
+    const minHeightPx = window.innerHeight * 0.1;
     const maxHeightPx = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
     newY = Math.max(minHeightPx, Math.min(newY, maxHeightPx));
-    
     mapSidebarEl.style.transform = `translateY(${newY}px)`;
 }
 
 function handleTouchEnd() {
+    if (!isDraggingPanel) {
+        return;
+    }
+
     if (touchStartY === 0) return;
     
     mapSidebarEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
@@ -1034,6 +1021,7 @@ function handleTouchEnd() {
     mapSidebarEl.style.transform = `translateY(${snapPoints[panelState]}px)`;
 
     // Reset de touch-variabelen
+	isDraggingPanel = false;
     touchStartY = 0;
     touchCurrentY = 0;
 }
