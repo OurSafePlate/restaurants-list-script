@@ -82,6 +82,7 @@
   let touchStartY = 0;
   let touchCurrentY = 0;
   let userLocation = null;
+  let userLocationMarker = null;
   let isDraggingPanel = false;
   let currentlySelectedId = null;
   
@@ -644,25 +645,54 @@ function initMap() {
     });
 
     if (navigator.geolocation) {
-        log("Browser ondersteunt geolocatie. Vraag om locatie...");
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const userCoords = [position.coords.latitude, position.coords.longitude];
-				userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-                log(`Locatie gevonden: ${userCoords}. Kaart centreren.`);
-                map.flyTo(userCoords, 14);
+    log("Browser ondersteunt geolocatie. Start live locatie volgen...");
+    
+    // Gebruik watchPosition voor live updates.
+    navigator.geolocation.watchPosition(
+        (position) => {
+            const userCoords = [position.coords.latitude, position.coords.longitude];
+            const newLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+            log(`Locatie update: ${userCoords}.`);
 
-                // Herlaad BEIDE lijsten ZODRA de locatie bekend is.
-                fetchAndDisplayMainList(); // Ververst de hoofdlijst op de achtergrond.
-                handleSearchArea();        // Ververst de kaartlijst direct.
-            },
-            () => {
-                log("Toestemming voor locatie geweigerd. Val terug op standaardlocatie.");
+            // Als dit de EERSTE locatie-update is, centreer de kaart.
+            if (userLocation === null) {
+                map.flyTo(userCoords, 14);
+                fetchAndDisplayMainList();
+                handleSearchArea();
+            }
+
+            userLocation = newLocation; // Update de globale locatie_variabele
+
+            // DE FIX: Teken of update het blauwe bolletje
+            if (!userLocationMarker) {
+                // Creëer het bolletje als het nog niet bestaat
+                userLocationMarker = L.circleMarker(userCoords, {
+                    radius: 8,
+                    color: '#ffffff', // Witte rand
+                    weight: 2,
+                    fillColor: '#4285F4', // Blauw
+                    fillOpacity: 1
+                }).addTo(map);
+                log("Gebruikerslocatie marker aangemaakt.");
+            } else {
+                // Update de positie als het al bestaat
+                userLocationMarker.setLatLng(userCoords);
+                log("Gebruikerslocatie marker positie bijgewerkt.");
+            }
+        },
+        () => {
+            log("Toestemming voor locatie geweigerd. Val terug op standaardlocatie.");
+            // Voer deze fallback alleen uit als we nog geen locatie hadden.
+            if (userLocation === null) {
                 map.flyTo(INITIAL_COORDS, INITIAL_ZOOM);
                 setTimeout(handleSearchArea, 1000);
             }
-        );
-    } else {
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Opties voor watchPosition
+    );
+} 
+	
+	else {
         log("Browser ondersteunt geen geolocatie. Val terug op standaardlocatie.");
         map.flyTo(INITIAL_COORDS, INITIAL_ZOOM);
         setTimeout(handleSearchArea, 1000);
