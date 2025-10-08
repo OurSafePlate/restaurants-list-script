@@ -953,28 +953,28 @@ function handleTouchStart(e) {
 }
 
 function handleTouchMove(e) {
+    // Als de touch niet is gestart, doe niets.
     if (touchStartY === 0) return;
 
-    // Aangezien deze listener nu alleen op de header zit,
-    // moeten we ALTIJD de standaard browser-actie (zoals scrollen) voorkomen.
+    // Aangezien deze listener nu alleen op de header is,
+    // willen we ALTIJD de browser's default scroll gedrag voorkomen.
     e.preventDefault();
 
     touchCurrentY = e.touches[0].clientY;
     const diffY = touchCurrentY - touchStartY;
-
-    // Gebruik de bounding rect voor een betrouwbaardere startpositie.
-    // Deze logica is vereenvoudigd omdat we niet meer hoeven te corrigeren voor de 'state'.
+    
+    let currentTranslateY;
+    // Gebruik de bounding rect voor een betrouwbaardere startpositie dan de state variabele.
     const rect = mapSidebarEl.getBoundingClientRect();
-    // We berekenen waar de 'top' was bij de start van de beweging.
-    const initialTop = rect.top - (touchCurrentY - touchStartY);
+    const initialTop = rect.top - diffY;
 
     // De nieuwe positie is de startpositie plus de totale beweging.
     let newY = initialTop + diffY;
-
+    
     const minTopPx = window.innerHeight * 0.1; // Positie voor 'full' state
     const maxTopPx = window.innerHeight - PANEL_COLLAPSED_HEIGHT; // Positie voor 'collapsed' state
     newY = Math.max(minTopPx, Math.min(newY, maxTopPx));
-
+    
     mapSidebarEl.style.transform = `translateY(${newY}px)`;
 }
 
