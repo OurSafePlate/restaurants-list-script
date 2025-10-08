@@ -998,7 +998,6 @@ function handleTouchEnd() {
 
     const snapPoints = {
         full: screenHeight * 0.1,
-        partial: screenHeight * 0.6,
         collapsed: screenHeight - PANEL_COLLAPSED_HEIGHT
     };
 
