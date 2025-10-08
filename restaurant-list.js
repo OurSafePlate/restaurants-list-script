@@ -962,20 +962,18 @@ function handleTouchMove(e) {
     touchCurrentY = e.touches[0].clientY;
     const diffY = touchCurrentY - touchStartY;
 
-    let currentTranslateY;
-    if (mapSidebarEl.classList.contains('is-collapsed')) {
-        currentTranslateY = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
-    } else {
-        // Gebruik de bounding rect voor een betrouwbaardere startpositie dan de state.
-        const rect = mapSidebarEl.getBoundingClientRect();
-        currentTranslateY = rect.top;
-    }
+    // Gebruik de bounding rect voor een betrouwbaardere startpositie.
+    // Deze logica is vereenvoudigd omdat we niet meer hoeven te corrigeren voor de 'state'.
+    const rect = mapSidebarEl.getBoundingClientRect();
+    // We berekenen waar de 'top' was bij de start van de beweging.
+    const initialTop = rect.top - (touchCurrentY - touchStartY);
 
-    let newY = currentTranslateY + diffY;
+    // De nieuwe positie is de startpositie plus de totale beweging.
+    let newY = initialTop + diffY;
 
-    const minHeightPx = window.innerHeight * 0.1; // 90vh
-    const maxHeightPx = window.innerHeight - PANEL_COLLAPSED_HEIGHT;
-    newY = Math.max(minHeightPx, Math.min(newY, maxHeightPx));
+    const minTopPx = window.innerHeight * 0.1; // Positie voor 'full' state
+    const maxTopPx = window.innerHeight - PANEL_COLLAPSED_HEIGHT; // Positie voor 'collapsed' state
+    newY = Math.max(minTopPx, Math.min(newY, maxTopPx));
 
     mapSidebarEl.style.transform = `translateY(${newY}px)`;
 }
@@ -1721,7 +1719,7 @@ async function initializeSite() {
     const mapSidebarHeader = mapSidebarEl.querySelector('.map-sidebar-header');
 
     if (mapSidebarHeader) {
-        mapSidebarHeader.addEventListener('touchstart', handleTouchStart, { passive: true });
+        mapSidebarHeader.addEventListener('touchstart', handleTouchStart, { passive: false });
         mapSidebarHeader.addEventListener('touchmove', handleTouchMove, { passive: false });
         mapSidebarHeader.addEventListener('touchend', handleTouchEnd, { passive: true });
     } else {
