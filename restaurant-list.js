@@ -85,6 +85,7 @@
   let userLocationMarker = null;
   let isDraggingPanel = false;
   let currentlySelectedId = null;
+  let initialMapAnimationComplete = false;
   
 
   // --- CENTRALE STATE VOOR HET PANEEL ---
@@ -647,25 +648,34 @@ function initMap() {
 
     if (navigator.geolocation) {
 
-		if (userLocation) {
+	if (userLocation) {
         log("Locatie al bekend bij initialisatie kaart. Kaart centreren.");
         map.flyTo([userLocation.lat, userLocation.lng], 14);
 
-		map.once('moveend', () => {
+        map.once('moveend', () => {
             log("flyTo animatie voltooid. Marker wordt getekend en restaurants worden geladen.");
-            updateUserLocationMarker(); // Teken de marker pas nu.			
-        	handleSearchArea(); // Laad de restaurants op de kaart.
-    });
-	}
+            updateUserLocationMarker(); // Teken de marker pas nu.
+            handleSearchArea(); // Laad de restaurants op de kaart.
+            
+            initialMapAnimationComplete = true; // <-- DE FIX: Zet de vlag op true.
+        });
+    } else {
+        // Als er geen userLocation was, is er ook geen animatie.
+        initialMapAnimationComplete = true; 
+    }
 
-		
+	
     // Start de live-tracking voor het bolletje, los van de initiële zoom.
         log("Start live locatie volgen voor marker...");
         navigator.geolocation.watchPosition(
             (position) => {
-                // Update de globale variabele en roep de herbruikbare functie aan.
+                // Update de globale variabele.
                 userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-                updateUserLocationMarker();
+                
+                // DE FIX: Teken de marker alleen als de initiële animatie klaar is.
+                if (initialMapAnimationComplete) {
+                    updateUserLocationMarker();
+                }
             },
             (error) => {
                 log("Fout bij live locatie volgen: ", error.message);
@@ -677,7 +687,7 @@ function initMap() {
             },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-} 
+}
 	
 	else {
         log("Browser ondersteunt geen geolocatie. Val terug op standaardlocatie.");
