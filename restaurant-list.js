@@ -197,10 +197,18 @@ function requestUserLocation() {
         }
         log("Vraag om locatie...");
         navigator.geolocation.getCurrentPosition(
-            (position) => {
-                userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-                log(`Locatie gevonden: ${userLocation.lat}, ${userLocation.lng}`);
-                resolve();
+    		(position) => {
+        		userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+        		log(`Locatie gevonden: ${userLocation.lat}, ${userLocation.lng}`);
+
+        		// Voer de essentiële acties hier uit ZODRA de locatie bekend is.
+        		if (map) { // Zorg ervoor dat de kaart al is geïnitialiseerd
+            		map.flyTo([userLocation.lat, userLocation.lng], 14);
+            		handleSearchArea(); // Dit laadt de restaurants op de kaart
+        		}
+        		fetchAndDisplayMainList(); // Dit laadt de restaurants in de hoofdlijst
+        
+        		resolve();
             },
             () => {
                 log("Toestemming voor locatie geweigerd.");
@@ -645,50 +653,33 @@ function initMap() {
     });
 
     if (navigator.geolocation) {
-    log("Browser ondersteunt geolocatie. Start live locatie volgen...");
+    log("Browser ondersteunt geolocatie. Start live locatie volgen voor marker...");
     
-    // Gebruik watchPosition voor live updates.
     navigator.geolocation.watchPosition(
         (position) => {
             const userCoords = [position.coords.latitude, position.coords.longitude];
-            const newLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-            log(`Locatie update: ${userCoords}.`);
+            // Update de globale variabele voor toekomstige berekeningen (bijv. afstand)
+            userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
 
-            // Als dit de EERSTE locatie-update is, centreer de kaart.
-            if (userLocation === null) {
-                map.flyTo(userCoords, 14);
-                fetchAndDisplayMainList();
-                handleSearchArea();
-            }
-
-            userLocation = newLocation; // Update de globale locatie_variabele
-
-            // DE FIX: Teken of update het blauwe bolletje
-            if (!userLocationMarker) {
-                // Creëer het bolletje als het nog niet bestaat
+            // DE FIX: Deze functie focust zich nu UITSLUITEND op het tekenen van het bolletje.
+            if (!userLocationMarker && map) {
                 userLocationMarker = L.circleMarker(userCoords, {
                     radius: 8,
-                    color: '#ffffff', // Witte rand
+                    color: '#ffffff',
                     weight: 2,
-                    fillColor: '#4285F4', // Blauw
+                    fillColor: '#4285F4',
                     fillOpacity: 1
                 }).addTo(map);
                 log("Gebruikerslocatie marker aangemaakt.");
-            } else {
-                // Update de positie als het al bestaat
+            } else if (userLocationMarker) {
                 userLocationMarker.setLatLng(userCoords);
-                log("Gebruikerslocatie marker positie bijgewerkt.");
             }
         },
-        () => {
-            log("Toestemming voor locatie geweigerd. Val terug op standaardlocatie.");
-            // Voer deze fallback alleen uit als we nog geen locatie hadden.
-            if (userLocation === null) {
-                map.flyTo(INITIAL_COORDS, INITIAL_ZOOM);
-                setTimeout(handleSearchArea, 1000);
-            }
+        (error) => {
+            log("Fout bij live locatie volgen: ", error.message);
+            // We doen hier niets meer, de fallback gebeurt al in requestUserLocation
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Opties voor watchPosition
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 } 
 	
