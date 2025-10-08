@@ -650,36 +650,30 @@ function initMap() {
 		if (userLocation) {
         log("Locatie al bekend bij initialisatie kaart. Kaart centreren.");
         map.flyTo([userLocation.lat, userLocation.lng], 14);
-        handleSearchArea(); // Laad de restaurants op de kaart.
+
+		map.once('moveend', () => {
+            log("flyTo animatie voltooid. Marker wordt getekend en restaurants worden geladen.");
+            updateUserLocationMarker(); // Teken de marker pas nu.			
+        	handleSearchArea(); // Laad de restaurants op de kaart.
     }
 
 		
-    log("Browser ondersteunt geolocatie. Start live locatie volgen voor marker...");
-    
-    navigator.geolocation.watchPosition(
-        (position) => {
-            const userCoords = [position.coords.latitude, position.coords.longitude];
-            // Update de globale variabele voor toekomstige berekeningen (bijv. afstand)
-            userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-
-            // DE FIX: Deze functie focust zich nu UITSLUITEND op het tekenen van het bolletje.
-            if (!userLocationMarker && map) {
-                userLocationMarker = L.circleMarker(userCoords, {
-                    radius: 8,
-                    color: '#ffffff',
-                    weight: 2,
-                    fillColor: '#4285F4',
-                    fillOpacity: 1
-                }).addTo(map);
-                log("Gebruikerslocatie marker aangemaakt.");
-            } else if (userLocationMarker) {
-                userLocationMarker.setLatLng(userCoords);
-            }
-        },
-        (error) => {
-            log("Fout bij live locatie volgen: ", error.message);
-            // We doen hier niets meer, de fallback gebeurt al in requestUserLocation
-        },
+    // Start de live-tracking voor het bolletje, los van de initiële zoom.
+        log("Start live locatie volgen voor marker...");
+        navigator.geolocation.watchPosition(
+            (position) => {
+                // Update de globale variabele en roep de herbruikbare functie aan.
+                userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+                updateUserLocationMarker();
+            },
+            (error) => {
+                log("Fout bij live locatie volgen: ", error.message);
+                // Fallback als we NOG STEEDS geen locatie hebben.
+                if (!userLocation) {
+                   map.flyTo(INITIAL_COORDS, INITIAL_ZOOM);
+                   setTimeout(handleSearchArea, 1000);
+                }
+            },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 } 
@@ -691,6 +685,28 @@ function initMap() {
     }
 
     setTimeout(() => { map.invalidateSize(); }, 200);
+}
+
+function updateUserLocationMarker() {
+    if (!map || !userLocation) return; // Doe niets als de kaart of locatie niet beschikbaar is.
+
+    const userCoords = [userLocation.lat, userLocation.lng];
+
+    if (!userLocationMarker) {
+        // Creëer het bolletje als het nog niet bestaat
+        userLocationMarker = L.circleMarker(userCoords, {
+            radius: 8,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: '#4285F4',
+            fillOpacity: 1
+        }).addTo(map);
+        log("Gebruikerslocatie marker aangemaakt.");
+    } else {
+        // Update de positie als het al bestaat
+        userLocationMarker.setLatLng(userCoords);
+        log("Gebruikerslocatie marker positie bijgewerkt.");
+    }
 }
 
 
