@@ -83,6 +83,7 @@
   let touchCurrentY = 0;
   let userLocation = null;
   let isDraggingPanel = false;
+  let currentlySelectedId = null;
   
 
   // --- CENTRALE STATE VOOR HET PANEEL ---
@@ -756,6 +757,7 @@ async function handleSearchArea() {
 	
 function handleMarkerClick(id) {
     log(`Marker geklikt: ${id}`);
+    currentlySelectedId = id; // <-- DEZE REGEL IS NIEUW EN CRUCIAAL
     const restaurant = currentMapRestaurants.find(r => r.id === id);
     if (!restaurant) return;
 
@@ -1116,7 +1118,20 @@ function closePreviewCard(event) {
     document.getElementById('map-preview-card').classList.remove('is-visible');
     mapSidebarEl.classList.remove('is-hidden-by-preview');
     
-    Object.values(markers).forEach(m => m.setZIndexOffset(0));
+    // DE FIX: Controleer of er een ID is opgeslagen en deselecteer die specifieke marker.
+    if (currentlySelectedId && markers[currentlySelectedId]) {
+        const markerToDeselect = markers[currentlySelectedId];
+        if (markerToDeselect._icon) {
+            const markerWrapper = markerToDeselect._icon.querySelector('.marker-wrapper');
+            if (markerWrapper) {
+                markerWrapper.classList.remove('is-selected');
+            }
+        }
+        markerToDeselect.setZIndexOffset(0);
+    }
+
+    // Reset de state voor de volgende selectie.
+    currentlySelectedId = null;
 }
 	
 // --- FUNCTIE OM PAGINANUMMERS TE RENDEREN ---
