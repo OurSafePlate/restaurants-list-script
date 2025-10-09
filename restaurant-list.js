@@ -877,8 +877,12 @@ function highlightSelection(id, openTooltip = false) {
     });
 
     if (mapListContainer) {
-        mapListContainer.querySelectorAll('.restaurants_item-component').forEach(card => card.classList.remove('is-map-highlighted'));
+    // Zoek naar het element dat de highlight-class daadwerkelijk HEEFT.
+    const previouslySelected = mapListContainer.querySelector('.is-map-highlighted');
+    if (previouslySelected) {
+        previouslySelected.classList.remove('is-map-highlighted');
     }
+}
 
     // --- SELECTEER HET NIEUWE ITEM ---
     const marker = markers[id];
