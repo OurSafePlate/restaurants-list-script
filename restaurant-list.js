@@ -306,6 +306,10 @@ function formatDistance(meters) {
 }
 
 function updateScrollLock(state) {
+
+	// Voer deze functie UITSLUITEND uit op mobiele schermen.
+	if (window.innerWidth > 767) return;
+	
     if (!mapListContainer) return; // Zorg ervoor dat het element bestaat
 
     log(`updateScrollLock: Nieuwe staat is '${state}'.`);
