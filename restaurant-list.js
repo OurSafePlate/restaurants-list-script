@@ -903,6 +903,8 @@ function openMapOverlay() {
     log("Kaart overlay wordt geopend...");
     if (!mapOverlay) return;
 
+	window.location.hash = 'kaart';
+
     mapOverlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
@@ -934,6 +936,8 @@ function openMapOverlay() {
 function closeMapOverlay() {
     log("Kaart overlay sluiten...");
     if (!mapOverlay) return;
+
+	history.pushState("", document.title, window.location.pathname + window.location.search);
 
     mapOverlay.style.opacity = '0';
     document.body.style.overflow = '';
@@ -1720,6 +1724,13 @@ async function initializeSite() {
     finsweetEmptyStateEl = document.querySelector(finsweetEmptyStateSelector);
     searchAreaButton = document.querySelector(searchAreaButtonSelector);
 	mapSidebarEl = document.querySelector(mapSidebarSelector);
+
+	// DE FIX: Controleer de URL hash NAdat de elementen zijn gekoppeld.
+    if (window.location.hash === '#kaart') {
+        log("URL hash #kaart gevonden. Kaart wordt automatisch geopend.");
+        // We roepen de functie direct aan. De rest van de initialisatie gaat door.
+        openMapOverlay();
+    }
 
     if (!restaurantListWrapperEl) return console.error("Hoofdlijst wrapper niet gevonden!");
     if (templateItemEl) templateItemEl.style.display = 'none';
